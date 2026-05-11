@@ -5,7 +5,11 @@ import {
   RedisStore,
   createClient,
   zxcvbn,
+  bcrypt,
+  eq,
 } from "../index.js";
+import { db } from "../db/index.js";
+import { users } from "../db/schema.js";
 
 // REDISに接続
 if (!process.env.REDIS_URL) {
@@ -31,6 +35,19 @@ const registerLimiter = rateLimiter({
     sendCommand: (...args: string[]) => redisNetwork.sendCommand(args),
   }) as any,
 });
+
+// パスワードのハッシュ化
+export const hashPassword = async (password: string): Promise<string> => {
+  const saltRounds = 10;
+  return bcrypt.hash(password, saltRounds);
+};
+// パスワードの検証
+export const comparePassword = async (
+  password: string,
+  hash: string,
+): Promise<boolean> => {
+  return bcrypt.compare(password, hash);
+};
 
 app.get("/api", (c) => c.json({ status: "ok" }));
 
@@ -70,14 +87,43 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
 
   const body = await c.req.json();
   const result = userRegisterSchema.safeParse(body);
-
+  // DB接続検証
   if (!result.success) {
+    // 失敗
     return c.json({ success: false, errors: result.error }, 400);
   }
-  const { name, email } = result.data;
+  const { name, email, password } = result.data;
 
+  // メールアドレスの重複チェック
+  const existingUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email));
+
+  if (existingUser.length > 0) {
+    return c.json(
+      { success: false, errors: "このメールアドレスは既に登録されています。" },
+      409,
+    );
+  }
+
+  // パスワードのハッシュ化
+  const hashedPassword = await hashPassword(password);
+
+  // DBにユーザーデータを保存
+  await db.insert(users).values({
+    name,
+    email,
+    password: hashedPassword,
+  });
+
+  // 成功
   return c.json(
-    { success: true, message: "アカウント作成成功", data: { name, email } },
+    {
+      success: true,
+      message: "アカウント作成成功",
+      data: { name, email },
+    },
     200,
   );
 });
