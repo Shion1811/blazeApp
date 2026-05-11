@@ -1,3 +1,5 @@
+// ライブラリの集約
+
 export * from "dotenv/config";
 export * from "hono";
 export * from "@hono/node-server";
@@ -10,3 +12,4 @@ export { drizzle } from "drizzle-orm/node-postgres";
 export { Pool } from "pg";
 export { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
 export { eq } from "drizzle-orm";
+export { default as bcrypt } from "bcryptjs";
