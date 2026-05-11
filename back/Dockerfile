@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["npx", "tsx", "src/server.ts"]
