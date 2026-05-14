@@ -4,20 +4,13 @@ import {
   getConnInfo,
   rateLimiter,
   RedisStore,
-  createClient,
   zxcvbn,
   bcrypt,
   eq,
 } from "../index.js";
 import { db } from "../db/index.js";
 import { admin, emailSchema, passwordBaseSchema } from "../db/schema.js";
-
-// REDISに接続
-if (!process.env.REDIS_URL) {
-  throw new Error("REDIS_URL が .env に設定されていません");
-}
-const redisNetwork = createClient({ url: process.env.REDIS_URL });
-await redisNetwork.connect();
+import { redisClient } from "../db/redis.js";
 
 const app = new Hono();
 
@@ -29,7 +22,7 @@ const registerLimiter = rateLimiter({
   // IPアドレス認識
   keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redisNetwork.sendCommand(args),
+    sendCommand: (...args: string[]) => redisClient.sendCommand(args),
   }) as any,
 });
 
@@ -45,8 +38,6 @@ export const comparePassword = async (
 ): Promise<boolean> => {
   return bcrypt.compare(password, hash);
 };
-
-app.get("/api", (c) => c.json({ status: "ok" }));
 
 app.post("/api/admin/register", registerLimiter, async (c) => {
   const userRegisterSchema = z
