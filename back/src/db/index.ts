@@ -9,7 +9,9 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // 本番: 証明書を検証（安全） / 開発: 検証をスキップ
+  // 本番環境ではenvにNODE_ENV=productionを追記する
+  ssl: { rejectUnauthorized: process.env.NODE_ENV === "production" },
 });
 
 export const db = drizzle(pool);
