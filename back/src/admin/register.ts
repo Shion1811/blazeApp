@@ -82,7 +82,16 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
       path: ["passwordConfirmation"], // エラーをpasswordConfirmationフィールドに表示させる
     });
 
-  const body = await c.req.json();
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      { success: false, errors: "リクエストのJSON形式が不正です" },
+      400,
+    );
+  }
+
   const result = userRegisterSchema.safeParse(body);
   // DB接続検証
   if (!result.success) {
