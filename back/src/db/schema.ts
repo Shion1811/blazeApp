@@ -1,8 +1,8 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp } from "../index.js";
+import { pgTable, uuid, varchar, timestamp, z } from "../index.js";
 
-export const users = pgTable("users", {
+export const admin = pgTable("users", {
   // idの生成
   id: uuid("id").defaultRandom().primaryKey(),
   //   lengthは100文字以内 notNullで空文字は不可
@@ -14,3 +14,17 @@ export const users = pgTable("users", {
   // timestampで作成時の現在時刻を取得
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const emailSchema = z
+  .email("メールアドレス形式が正しくありません。")
+  .regex(/^[^\s]+$/, "空白は使えません")
+  .regex(/^[\x20-\x7e]+$/, "半角英数字・記号のみ使用できます")
+  .refine((val) => val.split("@").length === 2, {
+    message: "@は1つだけ使用してください",
+  });
+
+export const passwordBaseSchema = z
+  .string()
+  .min(8, "パスワードは8文字以上で入力してください。")
+  .regex(/^[^\s]+$/, "空白は使えません。")
+  .regex(/^[^\u3000-\u9fff]+$/, "全角文字は使えません。");
