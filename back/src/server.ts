@@ -3,11 +3,13 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import registerApp from "./admin/register.js";
+import loginApp from "./admin/login.js";
 
 const app = new Hono();
 
 // ルートの登録
 app.route("/", registerApp);
+app.route("/", loginApp);
 
 // サーバー起動
 const port = Number(process.env.PORT) || 3000;
