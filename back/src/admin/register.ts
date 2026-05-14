@@ -1,6 +1,7 @@
 import {
   Hono,
   z,
+  getConnInfo,
   rateLimiter,
   RedisStore,
   createClient,
@@ -16,11 +17,7 @@ if (!process.env.REDIS_URL) {
   throw new Error("REDIS_URL が .env に設定されていません");
 }
 const redisNetwork = createClient({ url: process.env.REDIS_URL });
-(async () => {
-  await redisNetwork.connect();
-})().catch((error) => {
-  console.error("接続に失敗しました:", error);
-});
+await redisNetwork.connect();
 
 const app = new Hono();
 
@@ -30,7 +27,7 @@ const registerLimiter = rateLimiter({
   limit: 1,
   message: "1分間に1回しか送信できません",
   // IPアドレス認識
-  keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "unknown",
+  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
   store: new RedisStore({
     sendCommand: (...args: string[]) => redisNetwork.sendCommand(args),
   }) as any,

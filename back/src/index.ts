@@ -3,6 +3,7 @@
 export * from "dotenv/config";
 export * from "hono";
 export * from "@hono/node-server";
+export * from "@hono/node-server/conninfo";
 export { z } from "zod";
 export { rateLimiter } from "hono-rate-limiter";
 export { RedisStore } from "rate-limit-redis";
