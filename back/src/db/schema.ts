@@ -12,5 +12,5 @@ export const users = pgTable("users", {
   password: varchar("password", { length: 255 }).notNull(),
   token: varchar("token", { length: 64 }),
   // timestampで作成時の現在時刻を取得
-  created_at: timestamp("created_at").defaultNow(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
