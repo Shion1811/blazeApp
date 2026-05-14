@@ -11,6 +11,8 @@ import {
 } from "../index.js";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
+import { success } from "zod";
+import { error } from "node:console";
 
 // REDISに接続
 if (!process.env.REDIS_URL) {
@@ -116,22 +118,32 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // パスワードのハッシュ化
   const hashedPassword = await hashPassword(password);
 
+  try {
   // DBにユーザーデータを保存
   await db.insert(users).values({
     name,
     email,
     password: hashedPassword,
   });
+  // 同時アクセスされてもしっかりエラーが出る
+} catch (e: any) {
+  if (e.code === "23505") {
+    return c.json(
+      { success: false, errors: "このメールアドレスは既に登録されています。"},409,
+    );
+  };
+  throw e;
+}
 
   // 成功
-  return c.json(
-    {
-      success: true,
-      message: "アカウント作成成功",
-      data: { name, email },
-    },
-    200,
-  );
-});
+  // return c.json(
+  //   {
+  //     success: true,
+  //     message: "アカウント作成成功",
+  //     data: { name, email },
+  //   },
+  //   200,
+  // );
+// });
 
 export default app;
