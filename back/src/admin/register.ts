@@ -71,7 +71,16 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // DB接続検証
   if (!result.success) {
     // 失敗
-    return c.json({ success: false, errors: result.error }, 400);
+    return c.json(
+      {
+        success: false,
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      400,
+    );
   }
   const { name, email, password } = result.data;
 

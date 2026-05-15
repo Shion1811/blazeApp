@@ -17,8 +17,7 @@ export const admin = pgTable("users", {
 
 export const emailSchema = z
   .email("メールアドレス形式が正しくありません。")
-  .regex(/^[^\s]+$/, "空白は使えません")
-  .regex(/^[\x20-\x7e]+$/, "半角英数字・記号のみ使用できます")
+  .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます")
   .refine((val) => val.split("@").length === 2, {
     message: "@は1つだけ使用してください",
   });
@@ -26,5 +25,4 @@ export const emailSchema = z
 export const passwordBaseSchema = z
   .string()
   .min(8, "パスワードは8文字以上で入力してください。")
-  .regex(/^[^\s]+$/, "空白は使えません。")
-  .regex(/^[^\u3000-\u9fff]+$/, "全角文字は使えません。");
+  .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます。");
