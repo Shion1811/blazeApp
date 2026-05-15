@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import registerApp from "./admin/register.js";
 import loginApp from "./admin/login.js";
 import logoutApp from "./admin/logout.js";
+import accountDeleteApp from "./admin/accountDelete.js";
 
 const app = new Hono();
 
@@ -12,6 +13,7 @@ const app = new Hono();
 app.route("/", registerApp);
 app.route("/", loginApp);
 app.route("/", logoutApp);
+app.route("/", accountDeleteApp);
 
 // サーバー起動
 const port = Number(process.env.PORT) || 3000;
