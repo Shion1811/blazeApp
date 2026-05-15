@@ -91,12 +91,17 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // パスワードのハッシュ化
   const hashedPassword = await hashPassword(password);
 
+  // トークンを生成
+  const { randomBytes } = await import("node:crypto");
+  const token = randomBytes(32).toString("hex");
+
   try {
     // DBにユーザーデータを保存
     await db.insert(admin).values({
       name,
       email,
       password: hashedPassword,
+      token,
     });
     // 同時アクセスされてもしっかりエラーが出る
   } catch (e: any) {
@@ -117,7 +122,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
     {
       success: true,
       message: "アカウント作成成功",
-      data: { name, email },
+      data: { name, email, token },
     },
     200,
   );

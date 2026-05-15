@@ -80,12 +80,21 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
       401,
     );
   }
+  // トークンを生成してDBに保存
+  const { randomBytes } = await import("node:crypto");
+  const token = randomBytes(32).toString("hex");
+
+  await db
+    .update(admin)
+    .set({ token })
+    .where(eq(admin.id, user.id));
 
   // 成功
   return c.json(
     {
       success: true,
       message: "ログイン成功",
+      data: { name: user.name, email: user.email, token },
     },
     200,
   );
