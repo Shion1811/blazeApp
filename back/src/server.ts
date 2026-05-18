@@ -16,7 +16,7 @@ app.route("/", logoutApp);
 app.route("/", accountDeleteApp);
 
 // サーバー起動
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 8080;
 
 console.log(`サーバー起動中... ポート: ${port}`);
 
