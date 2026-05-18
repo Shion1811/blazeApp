@@ -84,11 +84,18 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
   const { randomBytes } = await import("node:crypto");
   const token = randomBytes(32).toString("hex");
 
-  await db
-    .update(admin)
-    .set({ token })
-    .where(eq(admin.id, user.id));
+  await db.update(admin).set({ token }).where(eq(admin.id, user.id));
 
+  c.header(
+    "Set-Cookie",
+    // token=${token}はCookieの名前と値
+    //  HttpOnlyはXSS攻撃対策
+    //  Secureはhttpsのみ送信可能httpは不可
+    // SameSite=StrictはCSRF攻撃対策
+    // Path=/はサイト全体でCookieの使用が可能
+    // Max-Age=2592000は1ヶ月
+    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+  );
   // 成功
   return c.json(
     {
