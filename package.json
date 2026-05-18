@@ -23,8 +23,6 @@
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "hono-rate-limiter": "^0.5.3",
-    "install": "^0.13.0",
-    "npm": "^11.13.0",
     "pg": "^8.20.0",
     "rate-limit-redis": "^4.3.1",
     "redis": "^5.12.1",
