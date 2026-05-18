@@ -47,14 +47,24 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
         .min(1, "名前を入力してください。")
         .max(20, "20文字以内で入力してください。"),
       email: emailSchema,
-      password: passwordBaseSchema.refine((val) => zxcvbn(val).score >= 3, {
-        message: "パスワードが簡単です。",
-      }),
+      password: passwordBaseSchema,
       passwordConfirmation: z.string(),
     })
     .refine((data) => data.password === data.passwordConfirmation, {
       message: "パスワードが一致しません。",
       path: ["passwordConfirmation"], // エラーをpasswordConfirmationフィールドに表示させる
+    })
+
+    .superRefine((data, ctx) => {
+      // name,eamilの情報を取得してパスワードの強度を判断
+      const result = zxcvbn(data.password, [data.name, data.email]);
+      if (result.score < 3) {
+        ctx.addIssue({
+          code: "custom",
+          message: "パスワードが簡単です。",
+          path: ["password"],
+        });
+      }
     });
 
   let body: unknown;
