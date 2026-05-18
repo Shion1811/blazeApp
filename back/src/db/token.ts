@@ -17,8 +17,14 @@ export async function authToken(c: Context, next: Next) {
     );
   }
 
-  // "Bearer xxxxx" の7文字目以降を取得
-  const token = authHeader.slice(7);
+  // "Bearer xxxxx" の7文字目以降を取得し空のtokenは401エラーを出す
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return c.json(
+      { success: false, errors: "認証トークンがありません。" },
+      401,
+    );
+  }
 
   // トークンでユーザーを検索
   const existingUsers = await db
