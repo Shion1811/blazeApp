@@ -126,6 +126,10 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
     throw e;
   }
 
+  c.header(
+    "Set-Cookie",
+    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+  );
   // 成功
   return c.json(
     {
