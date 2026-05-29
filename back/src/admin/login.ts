@@ -83,10 +83,11 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
   // トークンを生成してDBに保存
   const { randomBytes } = await import("node:crypto");
   const token = randomBytes(32).toString("hex");
+  const tokenIssuedAt = new Date();
 
   await db
     .update(admin)
-    .set({ token, token_issued_at: new Date() })
+    .set({ token, token_issued_at: tokenIssuedAt })
     .where(eq(admin.id, user.id));
 
   c.header(
@@ -108,7 +109,7 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
         name: user.name,
         email: user.email,
         token,
-        token_issued_at: user.token_issued_at,
+        token_issued_at: tokenIssuedAt,
       },
     },
     200,
