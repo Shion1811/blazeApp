@@ -113,6 +113,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // トークンを生成
   const { randomBytes } = await import("node:crypto");
   const token = randomBytes(32).toString("hex");
+  const token_issued_at = new Date();
 
   try {
     // DBにユーザーデータを保存
@@ -121,6 +122,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
       email,
       password: hashedPassword,
       token,
+      token_issued_at,
     });
     // 同時アクセスされてもしっかりエラーが出る
   } catch (e: any) {

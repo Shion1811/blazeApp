@@ -84,7 +84,10 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
   const { randomBytes } = await import("node:crypto");
   const token = randomBytes(32).toString("hex");
 
-  await db.update(admin).set({ token }).where(eq(admin.id, user.id));
+  await db
+    .update(admin)
+    .set({ token, token_issued_at: new Date() })
+    .where(eq(admin.id, user.id));
 
   c.header(
     "Set-Cookie",
@@ -101,7 +104,12 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     {
       success: true,
       message: "ログイン成功",
-      data: { name: user.name, email: user.email, token },
+      data: {
+        name: user.name,
+        email: user.email,
+        token,
+        token_issued_at: user.token_issued_at,
+      },
     },
     200,
   );

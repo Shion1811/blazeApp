@@ -37,6 +37,14 @@ export async function authToken(c: Context, next: Next) {
     return c.json({ success: false, errors: "無効なトークンです。" }, 401);
   }
 
+  const oneMOnthKeep = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  if (user.token_issued_at < oneMOnthKeep) {
+    return c.json(
+      { success: false, errors: "トークンの有効期限が切れています。" },
+      401,
+    );
+  }
+
   //データを渡せるようにしてる
   c.set("user", user);
   await next();

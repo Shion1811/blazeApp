@@ -1,6 +1,7 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp, z } from "../index.js";
+import { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
+import { z } from "zod";
 
 export const admin = pgTable("users", {
   // idの生成
@@ -13,6 +14,7 @@ export const admin = pgTable("users", {
   token: varchar("token", { length: 64 }),
   // timestampで作成時の現在時刻を取得
   created_at: timestamp("created_at").defaultNow().notNull(),
+  token_issued_at: timestamp("token_issued_at").defaultNow().notNull(),
 });
 
 export const emailSchema = z
