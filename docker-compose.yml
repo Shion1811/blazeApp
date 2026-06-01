@@ -23,9 +23,6 @@ services:
     depends_on:
       redis:
         condition: service_started
-    volumes:
-      - ./back:/app
-      - /app/node_modules
 
   # Redisはメモリ管理
   redis:
