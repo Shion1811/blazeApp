@@ -5,7 +5,8 @@ import {
   images,
   movies,
   files,
-  getPresignedDownloadUrl,
+  toMediaUrl,
+  getRelatedMediaUrls,
 } from "../shared/index.js";
 
 import type { Context } from "hono";
@@ -30,58 +31,19 @@ export const getById = async (c: Context) => {
     return c.json({ success: false, errors: "実績が見つかりません。" }, 404);
   }
 
-  //imgの取得
-  const relatedImages = await db
-    .select()
-    .from(images)
-    .where(eq(images.achievement_id, id));
-
-  // movieの取得
-  const relatedMovies = await db
-    .select()
-    .from(movies)
-    .where(eq(movies.achievement_id, id));
-
-  // fileの取得
-  const relatedFiles = await db
-    .select()
-    .from(files)
-    .where(eq(files.achievement_id, id));
-
-  // 取得したimgをURLに変換
-  const imageUrls = await Promise.all(
-    relatedImages.map(async (img) => ({
-      id: img.id,
-      url: await getPresignedDownloadUrl(img.path),
-    })),
-  );
-
-  // 取得したmovieをURLに変換
-  const movieUrls = await Promise.all(
-    relatedMovies.map(async (mov) => ({
-      id: mov.id,
-      url: await getPresignedDownloadUrl(mov.path),
-    })),
-  );
-
-  // 取得したfileをURLに変換
-  const fileUrls = await Promise.all(
-    relatedFiles.map(async (f) => ({
-      id: f.id,
-      url: await getPresignedDownloadUrl(f.path),
-    })),
-  );
+  // 関連するimg/movie/fileを取得してURLに変換
+  const imageUrls = await getRelatedMediaUrls(images, images.achievement_id, id);
+  const movieUrls = await getRelatedMediaUrls(movies, movies.achievement_id, id);
+  const fileUrls = await getRelatedMediaUrls(files, files.achievement_id, id);
 
   return c.json(
     {
       success: true,
       data: {
         ...item,
-        img_url: item.img ? await getPresignedDownloadUrl(item.img) : null,
-        movie_url: item.movie
-          ? await getPresignedDownloadUrl(item.movie)
-          : null,
-        file_url: item.file ? await getPresignedDownloadUrl(item.file) : null,
+        img_url: await toMediaUrl(item.img),
+        movie_url: await toMediaUrl(item.movie),
+        file_url: await toMediaUrl(item.file),
         images: imageUrls,
         movies: movieUrls,
         files: fileUrls,
