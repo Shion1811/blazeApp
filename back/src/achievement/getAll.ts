@@ -22,5 +22,5 @@ export const getAll = async (c: Context) => {
     })),
   );
 
-  return c.json({ success: true, data: achievementsWithUrls }, 200);
+  return c.json({ success: true, total: achievementsWithUrls.length, data: achievementsWithUrls }, 200);
 };

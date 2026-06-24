@@ -18,5 +18,5 @@ export const getAll = async (c: Context) => {
     })),
   );
 
-  return c.json({ success: true, data: inquiriesWithUrls }, 200);
+  return c.json({ success: true, total: inquiriesWithUrls.length, data: inquiriesWithUrls }, 200);
 };

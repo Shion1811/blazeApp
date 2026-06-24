@@ -19,6 +19,6 @@ export function createGetAll(type: "news" | "media") {
       })),
     );
 
-    return c.json({ success: true, data: withUrls }, 200);
+    return c.json({ success: true, total: withUrls.length, data: withUrls }, 200);
   };
 }
