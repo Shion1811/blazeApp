@@ -1,7 +1,5 @@
 import { Hono, eq } from "../index.js";
-import { db } from "../db/index.js";
-import { admin } from "../db/schema.js";
-import { authToken } from "../db/token.js";
+import { db, admin, authToken } from "../shared/index.js";
 
 // c.get("user") で使う型を宣言
 type Variables = {

@@ -8,9 +8,13 @@ import {
   bcrypt,
   eq,
 } from "../index.js";
-import { db } from "../db/index.js";
-import { admin, emailSchema, passwordBaseSchema } from "../db/schema.js";
-import { redisClient } from "../db/redis.js";
+import {
+  db,
+  admin,
+  emailSchema,
+  passwordBaseSchema,
+  redisClient,
+} from "../shared/index.js";
 
 const app = new Hono();
 

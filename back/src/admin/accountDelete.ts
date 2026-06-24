@@ -1,7 +1,5 @@
 import { Hono, z, eq, bcrypt } from "../index.js";
-import { db } from "../db/index.js";
-import { admin, passwordBaseSchema } from "../db/schema.js";
-import { authToken } from "../db/token.js";
+import { db, admin, passwordBaseSchema, authToken } from "../shared/index.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
