@@ -11,6 +11,13 @@ export { createClient } from "redis";
 export { default as zxcvbn } from "zxcvbn";
 export { drizzle } from "drizzle-orm/node-postgres";
 export { Pool } from "pg";
-export { pgTable, uuid, varchar, timestamp } from "drizzle-orm/pg-core";
-export { eq } from "drizzle-orm";
+export {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  text,
+} from "drizzle-orm/pg-core";
+export { eq, desc, and, sql } from "drizzle-orm";
 export { default as bcrypt } from "bcryptjs";
+export { cors } from "hono/cors";
