@@ -32,6 +32,10 @@ export const admin = pgTable("users", {
   password: varchar("password", { length: 255 }).notNull(),
   token: varchar("token", { length: 64 }).unique(),
   token_issued_at: timestamp("token_issued_at").defaultNow().notNull(),
+  // 削除日時（nullなら有効、セットされていれば削除済み・30日以内なら復活可能）
+  deleted_at: timestamp("deleted_at"),
+  // 権限ロール: 'owner' | 'admin' | 'member'（初回登録者が owner、以降は member）
+  role: varchar("role", { length: 10 }).notNull().default("member"),
 });
 
 // ニュース / メディア情報テーブル（typeで分類）
@@ -43,10 +47,10 @@ export const news = pgTable("news", {
   img: s3Path("img"),
   // 'news' または 'media' でニュースとメディア情報を分ける
   type: varchar("type", { length: 10 }).notNull(),
-  // 投稿した管理者のID
-  admin_id: uuid("admin_id")
-    .references(() => admin.id)
-    .notNull(),
+  // 投稿した管理者のID（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, {
+    onDelete: "set null",
+  }),
 });
 
 // 問い合わせテーブル
@@ -67,10 +71,10 @@ export const reply = pgTable("reply", {
   inquiry_id: uuid("inquiry_id")
     .references(() => inquiry.id, { onDelete: "cascade" })
     .notNull(),
-  // 返信した管理者のID
-  admin_id: uuid("admin_id")
-    .references(() => admin.id)
-    .notNull(),
+  // 返信した管理者のID（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, {
+    onDelete: "set null",
+  }),
   title: varchar("title", { length: 100 }).notNull(),
   body: text("body").notNull(),
   // 画像のS3パス（任意）
@@ -90,10 +94,10 @@ export const achievement = pgTable("achievement", {
   movie: s3Path("movie"),
   // ファイルのS3パス（任意）
   file: s3Path("file"),
-  // 投稿した管理者のID
-  admin_id: uuid("admin_id")
-    .references(() => admin.id)
-    .notNull(),
+  // 投稿した管理者のID（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, {
+    onDelete: "set null",
+  }),
 });
 
 // 試合風景テーブル
@@ -101,10 +105,10 @@ export const game = pgTable("game", {
   ...baseFields,
   // 画像のS3パス
   img: s3Path("img"),
-  // 投稿した管理者のID
-  admin_id: uuid("admin_id")
-    .references(() => admin.id)
-    .notNull(),
+  // 投稿した管理者のID（アカウント削除時はNULLになる）
+  admin_id: uuid("admin_id").references(() => admin.id, {
+    onDelete: "set null",
+  }),
 });
 
 // 画像ストレージテーブル（複数画像対応）
@@ -148,6 +152,32 @@ export const files = pgTable("files", {
   achievement_id: uuid("achievement_id").references(() => achievement.id, {
     onDelete: "cascade",
   }),
+});
+
+// 他者アカウント削除リクエスト（owner合意用）
+export const deletionRequests = pgTable("deletion_requests", {
+  ...baseFields,
+  // 削除対象ユーザー
+  target_user_id: uuid("target_user_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // リクエストを起こしたowner
+  requested_by: uuid("requested_by")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // 24時間で失効
+  expires_at: timestamp("expires_at").notNull(),
+});
+
+// 削除リクエストへの承認（各ownerが1件ずつ）
+export const deletionApprovals = pgTable("deletion_approvals", {
+  ...baseFields,
+  request_id: uuid("request_id")
+    .references(() => deletionRequests.id, { onDelete: "cascade" })
+    .notNull(),
+  approved_by: uuid("approved_by")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
 });
 
 // バリデーションスキーマ
