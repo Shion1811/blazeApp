@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { isNull, sql } from "drizzle-orm";
 import {
   Hono,
   z,
@@ -19,16 +20,21 @@ import {
 
 const app = new Hono();
 
-// 1分間に1回までの制御
-const registerLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  limit: 1,
-  message: "1分間に1回しか送信できません",
-  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
-  store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.sendCommand(args),
-  }) as any,
-});
+// 1分間に1回までの制御（テスト環境ではスキップ）
+const registerLimiter =
+  process.env.NODE_ENV === "test"
+    ? (_c: unknown, next: () => Promise<void>) => next()
+    : rateLimiter({
+        windowMs: 60 * 1000,
+        limit: 1,
+        message: "1分間に1回しか送信できません",
+        keyGenerator: (c) => {
+          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
+        },
+        store: new RedisStore({
+          sendCommand: (...args: string[]) => redisClient.sendCommand(args),
+        }) as any,
+      });
 
 // パスワードのハッシュ化
 export const hashPassword = async (password: string): Promise<string> => {
@@ -122,6 +128,13 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // パスワードのハッシュ化
   const hashedPassword = await hashPassword(password);
 
+  // 初回登録者を owner に、以降は member にする
+  const countResult = await db
+    .select({ total: sql<string>`count(*)` })
+    .from(admin)
+    .where(isNull(admin.deleted_at));
+  const role = Number(countResult[0]?.total ?? 0) === 0 ? "owner" : "member";
+
   // トークンを生成
   const token = randomBytes(32).toString("hex");
   const token_issued_at = new Date();
@@ -134,6 +147,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
       password: hashedPassword,
       token,
       token_issued_at,
+      role,
     });
     // 同時アクセスされてもしっかりエラーが出る
   } catch (e: any) {

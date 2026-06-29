@@ -1,7 +1,7 @@
 // トークン認証ミドルウェア（共通）
 
 import { getCookie } from "hono/cookie";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "./index.js";
 import { admin } from "./schema.js";
 import type { Context, Next } from "hono";
@@ -18,11 +18,11 @@ export async function authToken(c: Context, next: Next) {
     );
   }
 
-  // トークンでユーザーを検索
+  // トークンでユーザーを検索（削除済みアカウントは除外）
   const existingUsers = await db
     .select()
     .from(admin)
-    .where(eq(admin.token, token));
+    .where(and(eq(admin.token, token), isNull(admin.deleted_at)));
 
   const user = existingUsers[0];
   if (!user) {
