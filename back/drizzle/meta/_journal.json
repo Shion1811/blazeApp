@@ -22,6 +22,27 @@
       "when": 1782697221308,
       "tag": "0002_tidy_tenebrous",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782699419555,
+      "tag": "0003_puzzling_galactus",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782702286561,
+      "tag": "0004_curly_nico_minoru",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782703206963,
+      "tag": "0005_loving_sabretooth",
+      "breakpoints": true
     }
   ]
 }
