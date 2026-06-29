@@ -50,9 +50,18 @@ export async function processImageUpload(
     };
   }
 
-  // 画像を圧縮してS3にアップロード
+  // 画像をWebPに変換してS3にアップロード
   const buffer = Buffer.from(await file.arrayBuffer());
-  const compressed = await compressImage(buffer);
+  let compressed: Awaited<ReturnType<typeof compressImage>>;
+  try {
+    compressed = await compressImage(buffer);
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "画像の変換に失敗しました。",
+      status: 400,
+    };
+  }
   const s3Key = `${s3Prefix}/${Date.now()}.${compressed.extension}`;
   await uploadToS3(compressed.data, s3Key, compressed.contentType);
 

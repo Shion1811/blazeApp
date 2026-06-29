@@ -12,17 +12,12 @@ import { tmpdir } from "node:os";
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 // 設計書に基づく許可拡張子
+// RAW形式（cr3/cr2/arw/nef/raf/dng）は sharp 非対応のため LibRaw 対応まで除外（P2）
 const ALLOWED_IMAGE_EXTENSIONS = [
   "jpeg",
   "jpg",
   "heic",
   "heif",
-  "cr3",
-  "cr2",
-  "arw",
-  "nef",
-  "raf",
-  "dng",
   "png",
   "webp",
 ];
@@ -98,16 +93,20 @@ export function validateMultipleFiles(files: File[]): string | null {
 export async function compressImage(
   buffer: Buffer,
 ): Promise<{ data: Buffer; contentType: string; extension: string }> {
-  const compressed = await sharp(buffer)
-    .webp({ quality: 80 })
-    .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
-    .toBuffer();
+  try {
+    const compressed = await sharp(buffer)
+      .webp({ quality: 80 })
+      .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
+      .toBuffer();
 
-  return {
-    data: compressed,
-    contentType: "image/webp",
-    extension: "webp",
-  };
+    return {
+      data: compressed,
+      contentType: "image/webp",
+      extension: "webp",
+    };
+  } catch {
+    throw new Error("画像のWebP変換に失敗しました。JPEG・PNG・WebP・HEIC形式をご利用ください。");
+  }
 }
 
 /**
