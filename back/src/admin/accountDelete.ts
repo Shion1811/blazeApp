@@ -7,7 +7,7 @@ type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 
-app.post("/api/admin/account-delete", authToken, async (c) => {
+app.delete("/api/admin/account-delete", authToken, async (c) => {
   let body: unknown;
   try {
     body = await c.req.json();
@@ -18,17 +18,24 @@ app.post("/api/admin/account-delete", authToken, async (c) => {
     );
   }
 
-  // パスワードの再確認用スキーマ
   const deleteSchema = z.object({
     password: passwordBaseSchema,
   });
 
   const result = deleteSchema.safeParse(body);
   if (!result.success) {
-    return c.json({ success: false, errors: result.error }, 400);
+    return c.json(
+      {
+        success: false,
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      400,
+    );
   }
 
-  // authTokenで検証済みのユーザーを取得
   const user = c.get("user");
 
   // パスワード照合（本人確認）
@@ -43,14 +50,23 @@ app.post("/api/admin/account-delete", authToken, async (c) => {
     );
   }
 
-  // DBからユーザーを削除
-  await db.delete(admin).where(eq(admin.id, user.id));
+  // ソフトデリート：物理削除せず deleted_at をセット（30日以内は /api/admin/account-recover で復活可能）
+  await db
+    .update(admin)
+    .set({ token: null, deleted_at: new Date() })
+    .where(eq(admin.id, user.id));
 
-  // 成功
+  // Cookieも削除
+  c.header(
+    "Set-Cookie",
+    "token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
+  );
+
   return c.json(
     {
       success: true,
-      message: "アカウントを削除しました",
+      message:
+        "アカウントを削除しました。30日以内であれば復活できます。",
     },
     200,
   );
