@@ -7,7 +7,6 @@ import {
   inquiryNameSchema,
   titleSchema,
   bodySchema,
-  sanitizeHtml,
   processImageUpload,
 } from "../shared/index.js";
 import type { Context } from "hono";
@@ -40,10 +39,9 @@ export const create = async (c: Context) => {
     );
   }
 
-  // XSS対策
-  const name = sanitizeHtml(result.data.name);
-  const title = sanitizeHtml(result.data.title);
-  const bodyText = sanitizeHtml(result.data.body);
+  const name = result.data.name;
+  const title = result.data.title;
+  const bodyText = result.data.body;
 
   // 画像の処理（任意）
   let imgPath: string | null = null;

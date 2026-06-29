@@ -4,7 +4,6 @@ import {
   achievement,
   titleSchema,
   bodySchema,
-  sanitizeHtml,
   replaceMediaOnS3,
 } from "../shared/index.js";
 
@@ -61,8 +60,8 @@ export const update = async (c: Context) => {
   const updateData: Record<string, unknown> = {
     updated_at: new Date(),
   };
-  if (result.data.title) updateData.title = sanitizeHtml(result.data.title);
-  if (result.data.body) updateData.body = sanitizeHtml(result.data.body);
+  if (result.data.title) updateData.title = result.data.title;
+  if (result.data.body) updateData.body = result.data.body;
 
   const s3Prefix = `achievement/${id}`;
 

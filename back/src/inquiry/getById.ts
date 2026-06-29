@@ -1,7 +1,8 @@
 // GET /api/inquiry/:id — 特定の問い合わせ内容を取得（管理者のみ）
 
 import { eq, desc } from "../index.js";
-import { db, inquiry, reply, toMediaUrl } from "../shared/index.js";
+import { getTableColumns } from "drizzle-orm";
+import { db, inquiry, reply, admin, toMediaUrl } from "../shared/index.js";
 import type { Context } from "hono";
 
 export const getById = async (c: Context) => {
@@ -13,17 +14,21 @@ export const getById = async (c: Context) => {
 
   if (!item) return c.json({ success: false, errors: "問い合わせが見つかりません。" }, 404);
 
-  // この問い合わせへの返信を取得
+  // 返信一覧を管理者名付きで取得
   const replies = await db
-    .select()
+    .select({
+      ...getTableColumns(reply),
+      admin_name: admin.name,
+    })
     .from(reply)
+    .leftJoin(admin, eq(reply.admin_id, admin.id))
     .where(eq(reply.inquiry_id, id))
     .orderBy(desc(reply.created_at));
 
-  // 返信の画像・ファイルにも署名付きURLを付与
   const repliesWithUrls = await Promise.all(
     replies.map(async (r) => ({
       ...r,
+      admin_name: r.admin_name ?? "元管理者",
       img_url: await toMediaUrl(r.img),
       file_url: await toMediaUrl(r.file),
     })),
