@@ -15,6 +15,12 @@ app.post("/api/admin/logout", authToken, async (c) => {
   // トークンを削除
   await db.update(admin).set({ token: null }).where(eq(admin.id, user.id));
 
+  // CookieのTokenも削除
+  c.header(
+    "Set-Cookie",
+    "token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0",
+  );
+
   // 成功
   return c.json(
     {

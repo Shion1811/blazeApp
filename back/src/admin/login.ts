@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import {
   Hono,
   z,
@@ -15,15 +16,25 @@ import {
   redisClient,
 } from "../shared/index.js";
 
+// タイミング攻撃対策用のダミーハッシュ（ユーザーが存在しない場合に使用）
+const DUMMY_HASH =
+  "$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
+
 const app = new Hono();
 
 // 1分間に5回までの制御
 const loginLimiter = rateLimiter({
   windowMs: 60 * 1000,
   limit: 5,
-  message: "ログイン試行回数の上限に達しました。1分後に再試行してください。",
-  // IPアドレス認識
-  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
+  message: "ログイン試行回数の上限に達しました、1分後に再試行してください。",
+  // X-Forwarded-Forを優先してIPを取得（プロキシ・ロードバランサー基でも正しく機能する）
+  keyGenerator: (c) => {
+    const xff = c.req.header("x-forwarded-for");
+    const ip = xff ? xff.split(",")[0]?.trim() : getConnInfo(c).remote.address;
+    return (
+      ip || `${c.req.header("host") ?? ""}:${getConnInfo(c).remote.port ?? ""}`
+    );
+  },
   store: new RedisStore({
     sendCommand: (...args: string[]) => redisClient.sendCommand(args),
   }) as any,
@@ -49,7 +60,17 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
 
   const result = loginSchema.safeParse(body);
   if (!result.success) {
-    return c.json({ success: false, errors: result.error }, 400);
+    // ZodErrorを整形して返す（生のエラーオブジェクトをそのまま返さない）
+    return c.json(
+      {
+        success: false,
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      400,
+    );
   }
   const { email, password } = result.data;
 
@@ -60,22 +81,14 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     .where(eq(admin.email, email));
 
   const user = existingUsers[0];
-  if (!user) {
-    // ユーザー不一致エラー
-    return c.json(
-      {
-        success: false,
-        errors: "メールアドレスまたはパスワードが正しくありません。",
-      },
-      401,
-    );
-  }
 
-  // パスワードの照合
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+  // タイミング攻撃対策：ユーザーが存在しない場合もダミーハッシュでbcrypt.compareを実行し応答時間を均一化
+  const isPasswordValid = await bcrypt.compare(
+    password,
+    user?.password ?? DUMMY_HASH,
+  );
 
-  if (!isPasswordValid) {
-    // パスワード不一致エラー
+  if (!user || !isPasswordValid) {
     return c.json(
       {
         success: false,
@@ -85,7 +98,6 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     );
   }
   // トークンを生成してDBに保存
-  const { randomBytes } = await import("node:crypto");
   const token = randomBytes(32).toString("hex");
   const tokenIssuedAt = new Date();
 
@@ -104,7 +116,7 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
     // Max-Age=2592000は1ヶ月
     `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
   );
-  // 成功
+  // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
     {
       success: true,
@@ -112,8 +124,6 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
       data: {
         name: user.name,
         email: user.email,
-        token,
-        token_issued_at: tokenIssuedAt,
       },
     },
     200,

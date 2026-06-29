@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import {
   Hono,
   z,
@@ -23,8 +24,14 @@ const registerLimiter = rateLimiter({
   windowMs: 60 * 1000,
   limit: 1,
   message: "1分間に1回しか送信できません",
-  // IPアドレス認識
-  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
+  // X-Forwarded-Forを優先してIPを取得（プロキシ・ロードバランサー下でも正しく機能する）
+  keyGenerator: (c) => {
+    const xff = c.req.header("x-forwarded-for");
+    const ip = xff ? xff.split(",")[0]?.trim() : getConnInfo(c).remote.address;
+    return (
+      ip || `${c.req.header("host") ?? ""}:${getConnInfo(c).remote.port ?? ""}`
+    );
+  },
   store: new RedisStore({
     sendCommand: (...args: string[]) => redisClient.sendCommand(args),
   }) as any,
@@ -54,19 +61,27 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
       password: passwordBaseSchema,
       passwordConfirmation: z.string(),
     })
-    .refine((data) => data.password === data.passwordConfirmation, {
-      message: "パスワードが一致しません。",
-      path: ["passwordConfirmation"], // エラーをpasswordConfirmationフィールドに表示させる
-    })
-
     .superRefine((data, ctx) => {
-      // name,eamilの情報を取得してパスワードの強度を判断
-      const result = zxcvbn(data.password, [data.name, data.email]);
-      if (result.score < 3) {
+      // パスワードの強度チェック（name / email / emailのユーザー名部分も考慮）
+      const strengthResult = zxcvbn(data.password, [
+        data.name,
+        data.email,
+        data.email.split("@")[0] ?? "",
+      ]);
+      if (strengthResult.score < 3) {
         ctx.addIssue({
           code: "custom",
           message: "パスワードが簡単です。",
           path: ["password"],
+        });
+      }
+
+      // パスワード確認チェック
+      if (data.password !== data.passwordConfirmation) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["passwordConfirmation"],
+          message: "パスワードが一致しません。",
         });
       }
     });
@@ -115,7 +130,6 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   const hashedPassword = await hashPassword(password);
 
   // トークンを生成
-  const { randomBytes } = await import("node:crypto");
   const token = randomBytes(32).toString("hex");
   const token_issued_at = new Date();
 
@@ -146,12 +160,12 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
     "Set-Cookie",
     `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
   );
-  // 成功
+  // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
     {
       success: true,
       message: "アカウント作成成功",
-      data: { name, email, token },
+      data: { name, email },
     },
     200,
   );

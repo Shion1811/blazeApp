@@ -30,7 +30,7 @@ export const admin = pgTable("users", {
   // uniqueは重複を不可
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
-  token: varchar("token", { length: 64 }),
+  token: varchar("token", { length: 64 }).unique(),
   token_issued_at: timestamp("token_issued_at").defaultNow().notNull(),
 });
 
@@ -155,6 +155,8 @@ export const files = pgTable("files", {
 export const emailSchema = z
   .string()
   .email("メールアドレス形式が正しくありません。")
+  // DBのvarchar(255)に合わせた上限
+  .max(255, "メールアドレスは255文字以内で入力してください。")
   .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます")
   .refine((val) => val.split("@").length === 2, {
     message: "@は1つだけ使用してください",
@@ -163,6 +165,8 @@ export const emailSchema = z
 export const passwordBaseSchema = z
   .string()
   .min(8, "パスワードは8文字以上で入力してください。")
+  // bcryptは72バイト以上を無音で切り捨てるため上限を明示
+  .max(72, "パスワードは72文字以内で入力してください。")
   .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます。");
 
 // 投稿系の共通バリデーション（設計書のルールに基づく）
