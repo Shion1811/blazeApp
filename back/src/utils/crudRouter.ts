@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { admin } from "../db/schema.js";
 import { authToken } from "../db/token.js";
+import { requireAdmin } from "../db/roleGuard.js";
 
 type Variables = {
   user: typeof admin.$inferSelect;
@@ -32,9 +33,9 @@ export function createCrudRouter(config: {
 
   app.get(basePath, (c) => getAll(c));
   app.get(`${basePath}/:id`, (c) => getById(c));
-  app.post(basePath, authToken, (c) => create(c));
-  app.patch(updatePath, authToken, (c) => update(c));
-  app.delete(`${basePath}/:id`, authToken, (c) => remove(c));
+  app.post(basePath, authToken, requireAdmin, (c) => create(c));
+  app.patch(updatePath, authToken, requireAdmin, (c) => update(c));
+  app.delete(`${basePath}/:id`, authToken, requireAdmin, (c) => remove(c));
 
   return app;
 }
