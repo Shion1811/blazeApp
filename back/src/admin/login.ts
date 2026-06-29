@@ -17,8 +17,9 @@ import {
 } from "../shared/index.js";
 
 // タイミング攻撃対策用のダミーハッシュ（ユーザーが存在しない場合に使用）
+// bcrypt.compareが必ず失敗する正規の60文字ハッシュ。形式が不正だとエラーになるため実在するハッシュを使用
 const DUMMY_HASH =
-  "$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012345";
+  "$2b$10$ucIQ1FyfVwNqFMLtewRsn.NQtZluHjjNAb7sgNh/W0SOTf1lOVWnC";
 
 const app = new Hono();
 
@@ -27,14 +28,7 @@ const loginLimiter = rateLimiter({
   windowMs: 60 * 1000,
   limit: 5,
   message: "ログイン試行回数の上限に達しました、1分後に再試行してください。",
-  // X-Forwarded-Forを優先してIPを取得（プロキシ・ロードバランサー基でも正しく機能する）
-  keyGenerator: (c) => {
-    const xff = c.req.header("x-forwarded-for");
-    const ip = xff ? xff.split(",")[0]?.trim() : getConnInfo(c).remote.address;
-    return (
-      ip || `${c.req.header("host") ?? ""}:${getConnInfo(c).remote.port ?? ""}`
-    );
-  },
+  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
   store: new RedisStore({
     sendCommand: (...args: string[]) => redisClient.sendCommand(args),
   }) as any,

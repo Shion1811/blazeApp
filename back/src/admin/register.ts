@@ -24,14 +24,7 @@ const registerLimiter = rateLimiter({
   windowMs: 60 * 1000,
   limit: 1,
   message: "1分間に1回しか送信できません",
-  // X-Forwarded-Forを優先してIPを取得（プロキシ・ロードバランサー下でも正しく機能する）
-  keyGenerator: (c) => {
-    const xff = c.req.header("x-forwarded-for");
-    const ip = xff ? xff.split(",")[0]?.trim() : getConnInfo(c).remote.address;
-    return (
-      ip || `${c.req.header("host") ?? ""}:${getConnInfo(c).remote.port ?? ""}`
-    );
-  },
+  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
   store: new RedisStore({
     sendCommand: (...args: string[]) => redisClient.sendCommand(args),
   }) as any,
