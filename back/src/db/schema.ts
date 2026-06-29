@@ -1,16 +1,184 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp } from "../index.js";
+import { pgTable, uuid, varchar, timestamp, text } from "drizzle-orm/pg-core";
+import { z } from "zod";
 
-export const users = pgTable("users", {
-  // idの生成
+// ヘルパー
+
+// 全テーブル共通：id + created_at
+const baseFields = {
   id: uuid("id").defaultRandom().primaryKey(),
-  //   lengthは100文字以内 notNullで空文字は不可
+  created_at: timestamp("created_at").defaultNow().notNull(),
+};
+
+// 更新日時も持つテーブル用（news・achievement）
+const withUpdatedAt = {
+  ...baseFields,
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+};
+
+// S3パスカラム（任意、500文字以内）
+const s3Path = (name: string) => varchar(name, { length: 500 });
+
+// テーブル定義
+
+// 管理者テーブル
+export const admin = pgTable("users", {
+  ...baseFields,
+  // lengthは100文字以内 notNullで空文字は不可
   name: varchar("name", { length: 100 }).notNull(),
   // uniqueは重複を不可
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
-  token: varchar("token", { length: 64 }),
-  // timestampで作成時の現在時刻を取得
-  created_at: timestamp("created_at").defaultNow().notNull(),
+  token: varchar("token", { length: 64 }).unique(),
+  token_issued_at: timestamp("token_issued_at").defaultNow().notNull(),
 });
+
+// ニュース / メディア情報テーブル（typeで分類）
+export const news = pgTable("news", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body").notNull(),
+  // メイン画像のS3パス（任意）
+  img: s3Path("img"),
+  // 'news' または 'media' でニュースとメディア情報を分ける
+  type: varchar("type", { length: 10 }).notNull(),
+  // 投稿した管理者のID
+  admin_id: uuid("admin_id")
+    .references(() => admin.id)
+    .notNull(),
+});
+
+// 問い合わせテーブル
+export const inquiry = pgTable("inquiry", {
+  ...baseFields,
+  // お客様の名前（ニックネーム可）
+  name: varchar("name", { length: 100 }).notNull(),
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body").notNull(),
+  // 画像のS3パス（任意）
+  img: s3Path("img"),
+});
+
+// 問い合わせ返信テーブル
+export const reply = pgTable("reply", {
+  ...baseFields,
+  // どの問い合わせへの返信か
+  inquiry_id: uuid("inquiry_id")
+    .references(() => inquiry.id, { onDelete: "cascade" })
+    .notNull(),
+  // 返信した管理者のID
+  admin_id: uuid("admin_id")
+    .references(() => admin.id)
+    .notNull(),
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body").notNull(),
+  // 画像のS3パス（任意）
+  img: s3Path("img"),
+  // ファイルのS3パス（任意）
+  file: s3Path("file"),
+});
+
+// 実績テーブル
+export const achievement = pgTable("achievement", {
+  ...withUpdatedAt,
+  title: varchar("title", { length: 100 }).notNull(),
+  body: text("body").notNull(),
+  // 画像のS3パス（任意）
+  img: s3Path("img"),
+  // 動画のS3パス（任意）
+  movie: s3Path("movie"),
+  // ファイルのS3パス（任意）
+  file: s3Path("file"),
+  // 投稿した管理者のID
+  admin_id: uuid("admin_id")
+    .references(() => admin.id)
+    .notNull(),
+});
+
+// 試合風景テーブル
+export const game = pgTable("game", {
+  ...baseFields,
+  // 画像のS3パス
+  img: s3Path("img"),
+  // 投稿した管理者のID
+  admin_id: uuid("admin_id")
+    .references(() => admin.id)
+    .notNull(),
+});
+
+// 画像ストレージテーブル（複数画像対応）
+export const images = pgTable("images", {
+  ...baseFields,
+  // S3上のパス
+  path: varchar("path", { length: 500 }).notNull(),
+  // どのコンテンツに紐づくか（各FK、使う方だけ値が入る）
+  news_id: uuid("news_id").references(() => news.id, { onDelete: "cascade" }),
+  inquiry_id: uuid("inquiry_id").references(() => inquiry.id, {
+    onDelete: "cascade",
+  }),
+  reply_id: uuid("reply_id").references(() => reply.id, {
+    onDelete: "cascade",
+  }),
+  achievement_id: uuid("achievement_id").references(() => achievement.id, {
+    onDelete: "cascade",
+  }),
+  game_id: uuid("game_id").references(() => game.id, { onDelete: "cascade" }),
+});
+
+// 動画ストレージテーブル
+export const movies = pgTable("movies", {
+  ...baseFields,
+  path: varchar("path", { length: 500 }).notNull(),
+  achievement_id: uuid("achievement_id").references(() => achievement.id, {
+    onDelete: "cascade",
+  }),
+});
+
+// ファイルストレージテーブル
+export const files = pgTable("files", {
+  ...baseFields,
+  path: varchar("path", { length: 500 }).notNull(),
+  inquiry_id: uuid("inquiry_id").references(() => inquiry.id, {
+    onDelete: "cascade",
+  }),
+  reply_id: uuid("reply_id").references(() => reply.id, {
+    onDelete: "cascade",
+  }),
+  achievement_id: uuid("achievement_id").references(() => achievement.id, {
+    onDelete: "cascade",
+  }),
+});
+
+// バリデーションスキーマ
+
+export const emailSchema = z
+  .string()
+  .email("メールアドレス形式が正しくありません。")
+  // DBのvarchar(255)に合わせた上限
+  .max(255, "メールアドレスは255文字以内で入力してください。")
+  .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます")
+  .refine((val) => val.split("@").length === 2, {
+    message: "@は1つだけ使用してください",
+  });
+
+export const passwordBaseSchema = z
+  .string()
+  .min(8, "パスワードは8文字以上で入力してください。")
+  // bcryptは72バイト以上を無音で切り捨てるため上限を明示
+  .max(72, "パスワードは72文字以内で入力してください。")
+  .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます。");
+
+// 投稿系の共通バリデーション（設計書のルールに基づく）
+const stringField = (min: number, max: number, label: string) =>
+  z
+    .string()
+    .trim()
+    .min(min, `${label}を入力してください。`)
+    .max(max, `${label}は${max}文字以内で入力してください。`);
+
+export const titleSchema = stringField(1, 50, "タイトル");
+export const bodySchema = stringField(1, 2000, "内容");
+
+// 問い合わせ用の名前バリデーション
+export const inquiryNameSchema = stringField(1, 16, "名前");

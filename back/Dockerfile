@@ -7,6 +7,8 @@ RUN npm install
 
 COPY . .
 
+RUN npx tsc
+
 EXPOSE 8080
 
-CMD ["npx", "tsx", "src/server.ts"]
+CMD ["node", "dist/server.js"]

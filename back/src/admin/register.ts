@@ -1,24 +1,21 @@
+import { randomBytes } from "node:crypto";
 import {
   Hono,
   z,
   getConnInfo,
   rateLimiter,
   RedisStore,
-  createClient,
   zxcvbn,
   bcrypt,
   eq,
 } from "../index.js";
-import { db } from "../db/index.js";
-import { users } from "../db/schema.js";
-
-
-// REDISに接続
-if (!process.env.REDIS_URL) {
-  throw new Error("REDIS_URL が .env に設定されていません");
-}
-const redisNetwork = createClient({ url: process.env.REDIS_URL });
-await redisNetwork.connect();
+import {
+  db,
+  admin,
+  emailSchema,
+  passwordBaseSchema,
+  redisClient,
+} from "../shared/index.js";
 
 const app = new Hono();
 
@@ -27,10 +24,9 @@ const registerLimiter = rateLimiter({
   windowMs: 60 * 1000,
   limit: 1,
   message: "1分間に1回しか送信できません",
-  // IPアドレス認識
   keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redisNetwork.sendCommand(args),
+    sendCommand: (...args: string[]) => redisClient.sendCommand(args),
   }) as any,
 });
 
@@ -47,8 +43,6 @@ export const comparePassword = async (
   return bcrypt.compare(password, hash);
 };
 
-app.get("/api", (c) => c.json({ status: "ok" }));
-
 app.post("/api/admin/register", registerLimiter, async (c) => {
   const userRegisterSchema = z
     .object({
@@ -56,31 +50,33 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
         .string()
         .min(1, "名前を入力してください。")
         .max(20, "20文字以内で入力してください。"),
-      email: z
-        .email("メールアドレス形式が正しくありません。")
-        // /^[^\s]+$/の記号は空白がなく1文字以上あることの確認
-        .regex(/^[^\s]+$/, "空白は使えません")
-        // /^[\x20-\x7e]+$/の記号はスペースがなく漢字が含まれていないこと
-        .regex(/^[\x20-\x7e]+$/, "半角英数字・記号のみ使用できます")
-        // 「@」が2つ以上ないかの確認
-        .refine((val) => val.split("@").length === 2, {
-          message: "@は1つだけ使用してください",
-        }),
-      password: z
-        .string()
-        .min(8, "パスワードは8文字以上で入力してください。")
-        // /^[^\s]+$/の記号は空白がなく1文字以上あることの確認
-        .regex(/^[^\s]+$/, "空白は使えません。")
-        // /^[^\u3000-\u9fff]+$/の記号はスペースがなく漢字が含まれていないこと
-        .regex(/^[^\u3000-\u9fff]+$/, "全角文字は使えません。")
-        .refine((val) => zxcvbn(val).score >= 3, {
-          message: "パスワードが簡単です。",
-        }),
+      email: emailSchema,
+      password: passwordBaseSchema,
       passwordConfirmation: z.string(),
     })
-    .refine((data) => data.password === data.passwordConfirmation, {
-      message: "パスワードが一致しません。",
-      path: ["passwordConfirmation"], // エラーをpasswordConfirmationフィールドに表示させる
+    .superRefine((data, ctx) => {
+      // パスワードの強度チェック（name / email / emailのユーザー名部分も考慮）
+      const strengthResult = zxcvbn(data.password, [
+        data.name,
+        data.email,
+        data.email.split("@")[0] ?? "",
+      ]);
+      if (strengthResult.score < 3) {
+        ctx.addIssue({
+          code: "custom",
+          message: "パスワードが簡単です。",
+          path: ["password"],
+        });
+      }
+
+      // パスワード確認チェック
+      if (data.password !== data.passwordConfirmation) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["passwordConfirmation"],
+          message: "パスワードが一致しません。",
+        });
+      }
     });
 
   let body: unknown;
@@ -97,15 +93,24 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // DB接続検証
   if (!result.success) {
     // 失敗
-    return c.json({ success: false, errors: result.error }, 400);
+    return c.json(
+      {
+        success: false,
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+      400,
+    );
   }
   const { name, email, password } = result.data;
 
   // メールアドレスの重複チェック
   const existingUser = await db
     .select()
-    .from(users)
-    .where(eq(users.email, email));
+    .from(admin)
+    .where(eq(admin.email, email));
 
   if (existingUser.length > 0) {
     return c.json(
@@ -117,25 +122,38 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
   // パスワードのハッシュ化
   const hashedPassword = await hashPassword(password);
 
+  // トークンを生成
+  const token = randomBytes(32).toString("hex");
+  const token_issued_at = new Date();
+
   try {
     // DBにユーザーデータを保存
-    await db.insert(users).values({
+    await db.insert(admin).values({
       name,
       email,
       password: hashedPassword,
+      token,
+      token_issued_at,
     });
     // 同時アクセスされてもしっかりエラーが出る
   } catch (e: any) {
     if (e.code === "23505") {
       return c.json(
-        { success: false, errors: "このメールアドレスは既に登録されています。" },
+        {
+          success: false,
+          errors: "このメールアドレスは既に登録されています。",
+        },
         409,
       );
     }
     throw e;
   }
 
-  // 成功
+  c.header(
+    "Set-Cookie",
+    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+  );
+  // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
     {
       success: true,
