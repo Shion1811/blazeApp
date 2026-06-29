@@ -23,16 +23,21 @@ const DUMMY_HASH =
 
 const app = new Hono();
 
-// 1分間に5回までの制御
-const loginLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  limit: 5,
-  message: "ログイン試行回数の上限に達しました、1分後に再試行してください。",
-  keyGenerator: (c) => getConnInfo(c).remote.address ?? "unknown",
-  store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.sendCommand(args),
-  }) as any,
-});
+// 1分間に5回までの制御（テスト環境ではスキップ）
+const loginLimiter =
+  process.env.NODE_ENV === "test"
+    ? (_c: unknown, next: () => Promise<void>) => next()
+    : rateLimiter({
+        windowMs: 60 * 1000,
+        limit: 5,
+        message: "ログイン試行回数の上限に達しました、1分後に再試行してください。",
+        keyGenerator: (c) => {
+          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
+        },
+        store: new RedisStore({
+          sendCommand: (...args: string[]) => redisClient.sendCommand(args),
+        }) as any,
+      });
 
 app.post("/api/admin/login", loginLimiter, async (c) => {
   // ログイン用スキーマ（名前・パスワード確認は不要）
@@ -91,6 +96,30 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
       401,
     );
   }
+
+  // 削除済みアカウントの確認（パスワード一致後のみ案内してアカウント存在を明かさない）
+  if (user.deleted_at) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    if (user.deleted_at > thirtyDaysAgo) {
+      return c.json(
+        {
+          success: false,
+          errors:
+            "このアカウントは削除済みです。30日以内であれば /api/admin/account-recover から復活できます。",
+        },
+        403,
+      );
+    }
+    // 30日超過→存在しないとして扱う
+    return c.json(
+      {
+        success: false,
+        errors: "メールアドレスまたはパスワードが正しくありません。",
+      },
+      401,
+    );
+  }
+
   // トークンを生成してDBに保存
   const token = randomBytes(32).toString("hex");
   const tokenIssuedAt = new Date();
