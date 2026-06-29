@@ -6,7 +6,6 @@ import {
   news,
   titleSchema,
   bodySchema,
-  sanitizeHtml,
   replaceMediaOnS3,
 } from "../shared/index.js";
 import type { Context } from "hono";
@@ -47,8 +46,8 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
     }
 
     const updateData: Record<string, unknown> = { updated_at: new Date() };
-    if (result.data.title) updateData.title = sanitizeHtml(result.data.title);
-    if (result.data.body) updateData.body = sanitizeHtml(result.data.body);
+    if (result.data.title) updateData.title = result.data.title;
+    if (result.data.body) updateData.body = result.data.body;
 
     // 新しい画像がアップロードされた場合は差し替え
     const imageFile = body["image"];

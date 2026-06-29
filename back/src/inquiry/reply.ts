@@ -7,7 +7,6 @@ import {
   reply,
   titleSchema,
   bodySchema,
-  sanitizeHtml,
   processImageUpload,
   processFileUpload,
 } from "../shared/index.js";
@@ -45,8 +44,8 @@ export const createReply = async (c: Context) => {
     );
   }
 
-  const title = sanitizeHtml(result.data.title);
-  const bodyText = sanitizeHtml(result.data.body);
+  const title = result.data.title;
+  const bodyText = result.data.body;
 
   // 画像の処理（任意）
   let imgPath: string | null = null;
