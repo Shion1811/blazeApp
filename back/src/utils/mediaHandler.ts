@@ -11,10 +11,13 @@ import {
 } from "../db/s3.js";
 import {
   isValidImageExtension,
+  isRawImageExtension,
   isValidVideoExtension,
   validateFileSize,
+  validateRawFileSize,
   compressImage,
   compressVideo,
+  extractRawPreview,
 } from "./media.js";
 
 // メディア処理の結果型
@@ -41,18 +44,45 @@ export async function processImageUpload(
       status: 400,
     };
   }
-  // サイズチェック
-  if (!validateFileSize(file.size)) {
+
+  const isRaw = isRawImageExtension(file.name);
+
+  // サイズチェック（RAW形式は50MBまで、通常画像は10MBまで）
+  if (isRaw ? !validateRawFileSize(file.size) : !validateFileSize(file.size)) {
     return {
       success: false,
-      error: "画像サイズは10MB以下にしてください。",
+      error: isRaw
+        ? "RAW画像のファイルサイズは50MB以下にしてください。"
+        : "画像サイズは10MB以下にしてください。",
       status: 400,
     };
   }
 
-  // 画像を圧縮してS3にアップロード
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const compressed = await compressImage(buffer);
+  let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+
+  // RAW形式は埋め込みJPEGプレビューを抽出してからWebPに変換
+  if (isRaw) {
+    try {
+      buffer = await extractRawPreview(buffer);
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "RAWファイルの処理に失敗しました。",
+        status: 400,
+      };
+    }
+  }
+
+  let compressed: Awaited<ReturnType<typeof compressImage>>;
+  try {
+    compressed = await compressImage(buffer);
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "画像の変換に失敗しました。",
+      status: 400,
+    };
+  }
   const s3Key = `${s3Prefix}/${Date.now()}.${compressed.extension}`;
   await uploadToS3(compressed.data, s3Key, compressed.contentType);
 

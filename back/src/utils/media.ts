@@ -11,26 +11,25 @@ import { tmpdir } from "node:os";
 // FFmpegのパスを設定
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// カメラRAW形式：sharp 非対応のため exifr で埋め込みJPEGプレビューを抽出してからWebPに変換
+export const RAW_IMAGE_EXTENSIONS = ["cr3", "cr2", "arw", "nef", "raf", "dng"];
+
 // 設計書に基づく許可拡張子
 const ALLOWED_IMAGE_EXTENSIONS = [
   "jpeg",
   "jpg",
   "heic",
   "heif",
-  "cr3",
-  "cr2",
-  "arw",
-  "nef",
-  "raf",
-  "dng",
   "png",
   "webp",
+  ...RAW_IMAGE_EXTENSIONS,
 ];
 
 const ALLOWED_VIDEO_EXTENSIONS = ["mp4", "mov"];
 
 // ファイルサイズ制限（設計書より）
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 1ファイル10MB
+const MAX_RAW_FILE_SIZE = 50 * 1024 * 1024; // RAW形式は50MBまで許容（カメラRAWは通常20〜50MB）
 const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 合計100MB
 const MAX_FILE_COUNT = 10; // 最大10枚
 
@@ -63,12 +62,43 @@ export function isValidVideoExtension(filename: string): boolean {
 }
 
 /**
+ * カメラRAW形式かどうかチェック
+ */
+export function isRawImageExtension(filename: string): boolean {
+  return validateFileExtension(filename, RAW_IMAGE_EXTENSIONS);
+}
+
+/**
+ * RAWファイルから埋め込みJPEGプレビューを抽出
+ * カメラのRAWファイルには通常フルサイズ（またはそれに近い）JPEGプレビューが埋め込まれている。
+ * exifr でそのプレビューを取り出し、その後 sharp で WebP に変換する。
+ */
+export async function extractRawPreview(buffer: Buffer): Promise<Buffer> {
+  const { thumbnail } = await import("exifr");
+  const preview = await thumbnail(buffer);
+  if (!preview || preview.length === 0) {
+    throw new Error(
+      "RAWファイルからJPEGプレビューを抽出できませんでした。" +
+      "カメラの設定で「JPEGプレビュー：フルサイズ」が有効になっているか確認してください。",
+    );
+  }
+  return Buffer.from(preview);
+}
+
+/**
  * ファイルサイズをチェック
  * @param size - ファイルサイズ（バイト）
  * @returns 10MB以下ならtrue
  */
 export function validateFileSize(size: number): boolean {
   return size <= MAX_FILE_SIZE;
+}
+
+/**
+ * RAW形式ファイルのサイズをチェック（50MBまで）
+ */
+export function validateRawFileSize(size: number): boolean {
+  return size <= MAX_RAW_FILE_SIZE;
 }
 
 /**
@@ -98,16 +128,20 @@ export function validateMultipleFiles(files: File[]): string | null {
 export async function compressImage(
   buffer: Buffer,
 ): Promise<{ data: Buffer; contentType: string; extension: string }> {
-  const compressed = await sharp(buffer)
-    .webp({ quality: 80 })
-    .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
-    .toBuffer();
+  try {
+    const compressed = await sharp(buffer)
+      .webp({ quality: 80 })
+      .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
+      .toBuffer();
 
-  return {
-    data: compressed,
-    contentType: "image/webp",
-    extension: "webp",
-  };
+    return {
+      data: compressed,
+      contentType: "image/webp",
+      extension: "webp",
+    };
+  } catch {
+    throw new Error("画像のWebP変換に失敗しました。対応していない画像形式の可能性があります。");
+  }
 }
 
 /**

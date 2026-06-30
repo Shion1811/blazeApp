@@ -4,7 +4,6 @@ import {
   achievement,
   titleSchema,
   bodySchema,
-  sanitizeHtml,
   processImageUpload,
   processVideoUpload,
   processFileUpload,
@@ -43,8 +42,8 @@ export const create = async (c: Context) => {
     );
   }
 
-  const title = sanitizeHtml(result.data.title);
-  const bodyText = sanitizeHtml(result.data.body);
+  const title = result.data.title;
+  const bodyText = result.data.body;
   const tempId = crypto.randomUUID();
   const s3Prefix = `achievement/${tempId}`;
 

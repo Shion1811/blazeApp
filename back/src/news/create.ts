@@ -6,7 +6,6 @@ import {
   news,
   titleSchema,
   bodySchema,
-  sanitizeHtml,
   processImageUpload,
 } from "../shared/index.js";
 import type { Context } from "hono";
@@ -32,8 +31,8 @@ export function createCreate(type: "news" | "media", label: string, s3Prefix: st
       );
     }
 
-    const title = sanitizeHtml(result.data.title);
-    const bodyText = sanitizeHtml(result.data.body);
+    const title = result.data.title;
+    const bodyText = result.data.body;
 
     // 画像の処理（任意）
     let imgPath: string | null = null;

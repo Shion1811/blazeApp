@@ -14,3 +14,5 @@ services:
     image: redis:7-alpine
     ports:
       - "6380:6379"
+    # テスト用のためRDB永続化を無効化（stop-writes-on-bgsave-error防止）
+    command: redis-server --save "" --appendonly no

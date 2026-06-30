@@ -17,6 +17,8 @@ export {
   images,
   movies,
   files,
+  deletionRequests,
+  deletionApprovals,
 } from "../db/schema.js";
 
 // バリデーションスキーマ
@@ -30,6 +32,9 @@ export {
 
 // 認証ミドルウェア
 export { authToken } from "../db/token.js";
+
+// ロールガード
+export { requireOwner, requireAdmin } from "../db/roleGuard.js";
 
 // S3ストレージ
 export {
