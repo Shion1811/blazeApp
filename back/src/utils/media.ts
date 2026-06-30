@@ -29,6 +29,7 @@ const ALLOWED_VIDEO_EXTENSIONS = ["mp4", "mov"];
 
 // ファイルサイズ制限（設計書より）
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 1ファイル10MB
+const MAX_RAW_FILE_SIZE = 50 * 1024 * 1024; // RAW形式は50MBまで許容（カメラRAWは通常20〜50MB）
 const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 合計100MB
 const MAX_FILE_COUNT = 10; // 最大10枚
 
@@ -91,6 +92,13 @@ export async function extractRawPreview(buffer: Buffer): Promise<Buffer> {
  */
 export function validateFileSize(size: number): boolean {
   return size <= MAX_FILE_SIZE;
+}
+
+/**
+ * RAW形式ファイルのサイズをチェック（50MBまで）
+ */
+export function validateRawFileSize(size: number): boolean {
+  return size <= MAX_RAW_FILE_SIZE;
 }
 
 /**

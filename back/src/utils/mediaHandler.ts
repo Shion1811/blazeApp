@@ -14,6 +14,7 @@ import {
   isRawImageExtension,
   isValidVideoExtension,
   validateFileSize,
+  validateRawFileSize,
   compressImage,
   compressVideo,
   extractRawPreview,
@@ -43,11 +44,16 @@ export async function processImageUpload(
       status: 400,
     };
   }
-  // サイズチェック
-  if (!validateFileSize(file.size)) {
+
+  const isRaw = isRawImageExtension(file.name);
+
+  // サイズチェック（RAW形式は50MBまで、通常画像は10MBまで）
+  if (isRaw ? !validateRawFileSize(file.size) : !validateFileSize(file.size)) {
     return {
       success: false,
-      error: "画像サイズは10MB以下にしてください。",
+      error: isRaw
+        ? "RAW画像のファイルサイズは50MB以下にしてください。"
+        : "画像サイズは10MB以下にしてください。",
       status: 400,
     };
   }
@@ -55,7 +61,7 @@ export async function processImageUpload(
   let buffer: Buffer = Buffer.from(await file.arrayBuffer());
 
   // RAW形式は埋め込みJPEGプレビューを抽出してからWebPに変換
-  if (isRawImageExtension(file.name)) {
+  if (isRaw) {
     try {
       buffer = await extractRawPreview(buffer);
     } catch (err) {
