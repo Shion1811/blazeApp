@@ -1,0 +1,1 @@
+ALTER TABLE "deletion_approvals" ADD CONSTRAINT "deletion_approvals_request_approved_uniq" UNIQUE("request_id","approved_by");

@@ -87,6 +87,14 @@ app.post("/api/admin/users/:userId/delete-request", authToken, requireOwner, asy
     return c.json({ success: false, errors: "ユーザーが見つかりません。" }, 404);
   }
 
+  // ownerはdelete-requestの対象にできない（自己削除や専用フローを使用すること）
+  if (targets[0].role === "owner") {
+    return c.json(
+      { success: false, errors: "ownerアカウントはこの方法では削除できません。" },
+      400,
+    );
+  }
+
   // 有効な既存リクエストの確認
   const existing = await db
     .select()

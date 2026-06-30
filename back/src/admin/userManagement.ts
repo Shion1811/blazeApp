@@ -75,27 +75,29 @@ app.patch("/api/admin/users/:userId/role", authToken, requireOwner, async (c) =>
     return c.json({ success: false, errors: "ユーザーが見つかりません。" }, 404);
   }
 
-  // ownerが1人しかいない場合はdemotion禁止
-  if (targetUser.role === "owner" && result.data.role !== "owner") {
-    const allUsers = await db
-      .select()
-      .from(admin)
-      .where(isNull(admin.deleted_at));
-    const otherOwners = allUsers.filter(
-      (u) => u.role === "owner" && u.id !== userId,
-    );
-    if (otherOwners.length === 0) {
-      return c.json(
-        {
-          success: false,
-          errors: "ownerが1人しかいないため、このユーザーのロールを変更できません。",
-        },
-        400,
-      );
+  // ownerが1人しかいない場合はdemotion禁止（チェックと更新をトランザクションで原子化）
+  let demotionBlocked = false;
+  await db.transaction(async (tx) => {
+    if (targetUser.role === "owner" && result.data.role !== "owner") {
+      const allInTx = await tx.select().from(admin).where(isNull(admin.deleted_at));
+      const otherOwners = allInTx.filter((u) => u.role === "owner" && u.id !== userId);
+      if (otherOwners.length === 0) {
+        demotionBlocked = true;
+        return;
+      }
     }
-  }
+    await tx.update(admin).set({ role: result.data.role }).where(eq(admin.id, userId));
+  });
 
-  await db.update(admin).set({ role: result.data.role }).where(eq(admin.id, userId));
+  if (demotionBlocked) {
+    return c.json(
+      {
+        success: false,
+        errors: "ownerが1人しかいないため、このユーザーのロールを変更できません。",
+      },
+      400,
+    );
+  }
 
   return c.json(
     { success: true, message: `ロールを ${result.data.role} に変更しました。` },

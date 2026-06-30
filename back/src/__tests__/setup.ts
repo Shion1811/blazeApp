@@ -14,6 +14,13 @@ export const testDb = drizzle(testPool);
 
 const redisClient = createClient({ url: TEST_REDIS_URL });
 
+export async function teardownDb() {
+  if (redisClient.isOpen) {
+    await redisClient.quit();
+  }
+  await testPool.end();
+}
+
 // テーブルを全件削除 + Redis をフラッシュ（レートリミット状態をリセット）
 export async function cleanDb() {
   // Redisフラッシュ（レートリミットキーを削除）

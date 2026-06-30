@@ -1,4 +1,5 @@
 import { Hono, z, eq, bcrypt } from "../index.js";
+import { isNull } from "drizzle-orm";
 import { db, admin, passwordBaseSchema, authToken } from "../shared/index.js";
 
 type Variables = {
@@ -48,6 +49,21 @@ app.delete("/api/admin/account-delete", authToken, async (c) => {
       { success: false, errors: "パスワードが正しくありません。" },
       401,
     );
+  }
+
+  // ownerが自分1人の場合は削除不可（管理不能になるのを防ぐ）
+  if (user.role === "owner") {
+    const allUsers = await db.select().from(admin).where(isNull(admin.deleted_at));
+    const otherOwners = allUsers.filter((u) => u.role === "owner" && u.id !== user.id);
+    if (otherOwners.length === 0) {
+      return c.json(
+        {
+          success: false,
+          errors: "ownerが1人しかいないため、アカウントを削除できません。先に別のユーザーをownerに昇格してください。",
+        },
+        400,
+      );
+    }
   }
 
   // ソフトデリート：物理削除せず deleted_at をセット（30日以内は /api/admin/account-recover で復活可能）

@@ -9,7 +9,10 @@ import { app } from "../app.js";
  */
 export function extractCookie(setCookieHeader: string): string {
   const match = setCookieHeader.match(/token=[^;]*/);
-  return match ? match[0] : "";
+  if (!match) {
+    throw new Error(`set-cookie ヘッダに token が含まれていません: ${setCookieHeader}`);
+  }
+  return match[0];
 }
 
 /** ユーザー登録してログインし、Cookie 文字列を返す */

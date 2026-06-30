@@ -1,5 +1,6 @@
 // 問い合わせAPI（5エンドポイント）
 
+import { randomUUID } from "node:crypto";
 import {
   Hono,
   getConnInfo,
@@ -29,7 +30,7 @@ const inquiryLimiter =
         limit: 1,
         message: "1分間に1回しか送信できません。",
         keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
+          try { return getConnInfo(c).remote.address ?? randomUUID(); } catch { return randomUUID(); }
         },
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),

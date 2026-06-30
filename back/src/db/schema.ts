@@ -1,6 +1,6 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp, text } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, text, unique } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 // ヘルパー
@@ -178,7 +178,9 @@ export const deletionApprovals = pgTable("deletion_approvals", {
   approved_by: uuid("approved_by")
     .references(() => admin.id, { onDelete: "cascade" })
     .notNull(),
-});
+}, (t) => ({
+  uniqueApproval: unique("deletion_approvals_request_approved_uniq").on(t.request_id, t.approved_by),
+}));
 
 // バリデーションスキーマ
 
