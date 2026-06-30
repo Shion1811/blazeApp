@@ -11,10 +11,12 @@ import {
 } from "../db/s3.js";
 import {
   isValidImageExtension,
+  isRawImageExtension,
   isValidVideoExtension,
   validateFileSize,
   compressImage,
   compressVideo,
+  extractRawPreview,
 } from "./media.js";
 
 // メディア処理の結果型
@@ -50,8 +52,21 @@ export async function processImageUpload(
     };
   }
 
-  // 画像をWebPに変換してS3にアップロード
-  const buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+
+  // RAW形式は埋め込みJPEGプレビューを抽出してからWebPに変換
+  if (isRawImageExtension(file.name)) {
+    try {
+      buffer = await extractRawPreview(buffer);
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "RAWファイルの処理に失敗しました。",
+        status: 400,
+      };
+    }
+  }
+
   let compressed: Awaited<ReturnType<typeof compressImage>>;
   try {
     compressed = await compressImage(buffer);

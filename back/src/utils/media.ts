@@ -11,8 +11,10 @@ import { tmpdir } from "node:os";
 // FFmpegのパスを設定
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// カメラRAW形式：sharp 非対応のため exifr で埋め込みJPEGプレビューを抽出してからWebPに変換
+export const RAW_IMAGE_EXTENSIONS = ["cr3", "cr2", "arw", "nef", "raf", "dng"];
+
 // 設計書に基づく許可拡張子
-// RAW形式（cr3/cr2/arw/nef/raf/dng）は sharp 非対応のため LibRaw 対応まで除外（P2）
 const ALLOWED_IMAGE_EXTENSIONS = [
   "jpeg",
   "jpg",
@@ -20,6 +22,7 @@ const ALLOWED_IMAGE_EXTENSIONS = [
   "heif",
   "png",
   "webp",
+  ...RAW_IMAGE_EXTENSIONS,
 ];
 
 const ALLOWED_VIDEO_EXTENSIONS = ["mp4", "mov"];
@@ -55,6 +58,30 @@ export function isValidImageExtension(filename: string): boolean {
  */
 export function isValidVideoExtension(filename: string): boolean {
   return validateFileExtension(filename, ALLOWED_VIDEO_EXTENSIONS);
+}
+
+/**
+ * カメラRAW形式かどうかチェック
+ */
+export function isRawImageExtension(filename: string): boolean {
+  return validateFileExtension(filename, RAW_IMAGE_EXTENSIONS);
+}
+
+/**
+ * RAWファイルから埋め込みJPEGプレビューを抽出
+ * カメラのRAWファイルには通常フルサイズ（またはそれに近い）JPEGプレビューが埋め込まれている。
+ * exifr でそのプレビューを取り出し、その後 sharp で WebP に変換する。
+ */
+export async function extractRawPreview(buffer: Buffer): Promise<Buffer> {
+  const { thumbnail } = await import("exifr");
+  const preview = await thumbnail(buffer);
+  if (!preview || preview.length === 0) {
+    throw new Error(
+      "RAWファイルからJPEGプレビューを抽出できませんでした。" +
+      "カメラの設定で「JPEGプレビュー：フルサイズ」が有効になっているか確認してください。",
+    );
+  }
+  return Buffer.from(preview);
 }
 
 /**
@@ -105,7 +132,7 @@ export async function compressImage(
       extension: "webp",
     };
   } catch {
-    throw new Error("画像のWebP変換に失敗しました。JPEG・PNG・WebP・HEIC形式をご利用ください。");
+    throw new Error("画像のWebP変換に失敗しました。対応していない画像形式の可能性があります。");
   }
 }
 
