@@ -41,6 +41,7 @@ export { requireOwner, requireAdmin } from "../db/roleGuard.js";
 export {
   uploadToS3,
   deleteFromS3,
+  downloadFromS3,
   getPresignedDownloadUrl,
   generateS3Key,
 } from "../db/s3.js";
