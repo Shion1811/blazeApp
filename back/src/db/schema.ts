@@ -116,6 +116,9 @@ export const images = pgTable("images", {
   ...baseFields,
   // S3上のパス
   path: varchar("path", { length: 500 }).notNull(),
+  // 掲載同意ステータス（試合風景画像のみ使用）
+  // 'pending': 未確認（デフォルト）, 'approved': 同意済み, 'rejected': 拒否
+  consent_status: varchar("consent_status", { length: 10 }).notNull().default("pending"),
   // どのコンテンツに紐づくか（各FK、使う方だけ値が入る）
   news_id: uuid("news_id").references(() => news.id, { onDelete: "cascade" }),
   inquiry_id: uuid("inquiry_id").references(() => inquiry.id, {
@@ -214,3 +217,5 @@ export const bodySchema = stringField(1, 2000, "内容");
 
 // 問い合わせ用の名前バリデーション
 export const inquiryNameSchema = stringField(1, 16, "名前");
+
+export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);

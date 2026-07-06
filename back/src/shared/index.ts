@@ -28,10 +28,11 @@ export {
   titleSchema,
   bodySchema,
   inquiryNameSchema,
+  consentStatusSchema,
 } from "../db/schema.js";
 
 // 認証ミドルウェア
-export { authToken } from "../db/token.js";
+export { authToken, getOptionalUser } from "../db/token.js";
 
 // ロールガード
 export { requireOwner, requireAdmin } from "../db/roleGuard.js";
