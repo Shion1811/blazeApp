@@ -37,6 +37,9 @@ export { authToken, getOptionalUser } from "../db/token.js";
 // ロールガード
 export { requireOwner, requireAdmin } from "../db/roleGuard.js";
 
+// ロールガード
+export { requireOwner, requireAdmin } from "../db/roleGuard.js";
+
 // S3ストレージ
 export {
   uploadToS3,

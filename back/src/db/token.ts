@@ -52,6 +52,14 @@ export async function authToken(c: Context, next: Next) {
 
   const result = await resolveUserFromToken(token);
   if (result.status === "not_found") {
+  // トークンでユーザーを検索（削除済みアカウントは除外）
+  const existingUsers = await db
+    .select()
+    .from(admin)
+    .where(and(eq(admin.token, token), isNull(admin.deleted_at)));
+
+  const user = existingUsers[0];
+  if (!user) {
     return c.json({ success: false, errors: "無効なトークンです。" }, 401);
   }
   if (result.status === "expired") {
