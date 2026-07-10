@@ -183,3 +183,47 @@ describe("owner による他者アカウント削除", () => {
     expect((await reqRes.json() as { message: string }).message).toContain("承認");
   });
 });
+
+// --- 自己削除（owner保護） ---
+
+describe("owner の自己削除", () => {
+  it("owner が1人の場合は自己削除できない", async () => {
+    const cookie = await registerAndLogin("Solo", `solo${D}`);
+    const res = await app.request("/api/admin/account-delete", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ password: "Test@Password1!" }),
+    });
+    expect(res.status).toBe(400);
+
+    // 削除されていないのでCookieは引き続き有効
+    expect((await app.request("/api/admin/users", { headers: { Cookie: cookie } })).status).toBe(200);
+  });
+
+  it("owner が複数いれば自己削除できる", async () => {
+    const owner1Cookie = await registerAndLogin("Owner1", `sowner1${D}`);
+    const memberCookie = await registerAndLogin("Member", `smember${D}`);
+
+    const users = await getUsers(owner1Cookie);
+    const memberId = users.find((u) => u.email === `smember${D}`)?.id;
+    expect(memberId).toBeTruthy();
+
+    // member を owner に昇格（2人のownerになる）
+    await app.request(`/api/admin/users/${memberId}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: owner1Cookie },
+      body: JSON.stringify({ role: "owner" }),
+    });
+
+    const res = await app.request("/api/admin/account-delete", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Cookie: owner1Cookie },
+      body: JSON.stringify({ password: "Test@Password1!" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await app.request("/api/admin/users", { headers: { Cookie: owner1Cookie } })).status).toBe(401);
+
+    // memberCookieは引き続き有効（唯一のactive ownerとして残る）
+    expect((await app.request("/api/admin/users", { headers: { Cookie: memberCookie } })).status).toBe(200);
+  });
+});

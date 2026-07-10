@@ -32,6 +32,7 @@ export async function cleanDb() {
   // DBクリーンアップ
   await testPool.query(`
     TRUNCATE TABLE
+      password_reset_tokens,
       deletion_approvals,
       deletion_requests,
       reply,

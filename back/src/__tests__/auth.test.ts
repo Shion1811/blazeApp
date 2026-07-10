@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { app } from "../app.js";
 import { cleanDb } from "./setup.js";
-import { extractCookie, registerAndLogin } from "./testHelpers.js";
+import { extractCookie, registerAndLogin, getUsers } from "./testHelpers.js";
 
 const D = "@auth.test";
 
@@ -24,6 +24,24 @@ async function login(email: string, password: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
+}
+
+/** owner を2人登録し、1人目のCookieを返す（自己削除には他ownerが必要なため） */
+async function registerTwoOwners(email1: string, email2: string): Promise<string> {
+  const cookie1 = await registerAndLogin("Owner1", email1);
+  await registerAndLogin("Owner2", email2);
+
+  const users = await getUsers(cookie1);
+  const secondId = users.find((u) => u.email === email2)?.id;
+  if (!secondId) throw new Error("2人目のユーザーが見つかりません");
+
+  await app.request(`/api/admin/users/${secondId}/role`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: cookie1 },
+    body: JSON.stringify({ role: "owner" }),
+  });
+
+  return cookie1;
 }
 
 // --- Register ---
@@ -125,7 +143,7 @@ describe("authToken ミドルウェア", () => {
 
 describe("DELETE /api/admin/account-delete", () => {
   it("パスワード確認でソフトデリート・Cookie 削除", async () => {
-    const cookie = await registerAndLogin("DelUser", `del${D}`);
+    const cookie = await registerTwoOwners(`del${D}`, `del-co${D}`);
     const res = await app.request("/api/admin/account-delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json", Cookie: cookie },
@@ -146,7 +164,7 @@ describe("DELETE /api/admin/account-delete", () => {
   });
 
   it("削除後は Cookie でアクセス不可（401）", async () => {
-    const cookie = await registerAndLogin("DelUser3", `del3${D}`);
+    const cookie = await registerTwoOwners(`del3${D}`, `del3-co${D}`);
     await app.request("/api/admin/account-delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json", Cookie: cookie },
@@ -160,7 +178,7 @@ describe("DELETE /api/admin/account-delete", () => {
 
 describe("削除済みアカウントのログイン", () => {
   it("削除から30日以内は 403（復活案内）", async () => {
-    const cookie = await registerAndLogin("Deleted", `deleted${D}`);
+    const cookie = await registerTwoOwners(`deleted${D}`, `deleted-co${D}`);
     await app.request("/api/admin/account-delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json", Cookie: cookie },
@@ -186,7 +204,7 @@ describe("削除済みアカウントのログイン", () => {
 
 describe("POST /api/admin/account-recover", () => {
   it("30日以内なら復活できる", async () => {
-    const cookie = await registerAndLogin("Recover", `recover${D}`);
+    const cookie = await registerTwoOwners(`recover${D}`, `recover-co${D}`);
     await app.request("/api/admin/account-delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json", Cookie: cookie },

@@ -185,6 +185,20 @@ export const deletionApprovals = pgTable("deletion_approvals", {
   uniqueApproval: unique("deletion_approvals_request_approved_uniq").on(t.request_id, t.approved_by),
 }));
 
+// パスワード再設定トークン（メールで送るのはtokenの生値、DBにはハッシュのみ保存）
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  ...baseFields,
+  admin_id: uuid("admin_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // sha256ハッシュ（hex64文字）。生トークンはDBに保存しない
+  token_hash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  // 発行から1時間で失効
+  expires_at: timestamp("expires_at").notNull(),
+  // 使用済みなら日時が入る（再利用防止）
+  used_at: timestamp("used_at"),
+});
+
 // バリデーションスキーマ
 
 export const emailSchema = z

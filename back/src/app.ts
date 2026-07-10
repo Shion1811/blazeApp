@@ -15,6 +15,8 @@ import accountDeleteApp from "./admin/accountDelete.js";
 import accountRecoverApp from "./admin/accountRecover.js";
 import userManagementApp from "./admin/userManagement.js";
 import deleteRequestApp from "./admin/deleteRequest.js";
+import forgotPasswordApp from "./admin/forgotPassword.js";
+import resetPasswordApp from "./admin/resetPassword.js";
 
 // コンテンツ
 import newsApp from "./news/index.js";
@@ -54,13 +56,15 @@ app.route("/", accountDeleteApp);
 app.route("/", accountRecoverApp);
 app.route("/", userManagementApp);
 app.route("/", deleteRequestApp);
+app.route("/", forgotPasswordApp);
+app.route("/", resetPasswordApp);
 app.route("/", newsApp);
 app.route("/", inquiryApp);
 app.route("/", achievementApp);
 app.route("/", gameImgApp);
 app.route("/", mediaApp);
 
-// 30日超過アカウントの完全削除
+// 30日超過アカウントの完全削除・期限切れパスワード再設定トークンの削除
 export const cleanupExpiredAccounts = async () => {
   try {
     await db.execute(sql`
@@ -70,5 +74,14 @@ export const cleanupExpiredAccounts = async () => {
     `);
   } catch (e) {
     console.error("[cleanup] 削除済みアカウントのクリーンアップ失敗:", e);
+  }
+
+  try {
+    await db.execute(sql`
+      DELETE FROM password_reset_tokens
+      WHERE expires_at < NOW()
+    `);
+  } catch (e) {
+    console.error("[cleanup] パスワード再設定トークンのクリーンアップ失敗:", e);
   }
 };

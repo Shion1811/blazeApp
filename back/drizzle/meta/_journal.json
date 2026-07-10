@@ -57,6 +57,13 @@
       "when": 1751760000000,
       "tag": "0007_consent_status",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783550000000,
+      "tag": "0008_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }
