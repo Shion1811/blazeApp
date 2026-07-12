@@ -51,43 +51,51 @@ export const applyMosaic = async (c: Context) => {
   const { x, y, width, height } = parsed.data;
   const s3Key = existing[0]!.path;
 
-  // S3から元画像をダウンロード
-  const originalBuffer = await downloadFromS3(s3Key);
+  try {
+    // S3から元画像をダウンロード
+    const originalBuffer = await downloadFromS3(s3Key);
 
-  // 画像サイズを取得して座標が範囲内か確認
-  const metadata = await sharp(originalBuffer).metadata();
-  const imgWidth = metadata.width ?? 0;
-  const imgHeight = metadata.height ?? 0;
+    // 画像サイズを取得して座標が範囲内か確認
+    const metadata = await sharp(originalBuffer).metadata();
+    const imgWidth = metadata.width ?? 0;
+    const imgHeight = metadata.height ?? 0;
 
-  if (x + width > imgWidth || y + height > imgHeight) {
+    if (x + width > imgWidth || y + height > imgHeight) {
+      return c.json(
+        {
+          success: false,
+          errors: `指定領域が画像サイズ（${imgWidth}×${imgHeight}px）を超えています。`,
+        },
+        400,
+      );
+    }
+
+    // 指定領域をピクセル化（スケールダウン → ニアレストネイバーでスケールアップ）
+    const PIXEL_SIZE = 15;
+    const smallW = Math.max(1, Math.round(width / PIXEL_SIZE));
+    const smallH = Math.max(1, Math.round(height / PIXEL_SIZE));
+
+    const mosaicRegion = await sharp(originalBuffer)
+      .extract({ left: x, top: y, width, height })
+      .resize(smallW, smallH, { fit: "fill" })
+      .resize(width, height, { fit: "fill", kernel: "nearest" })
+      .toBuffer();
+
+    // モザイク領域を元画像に合成して WebP で書き出し
+    const result = await sharp(originalBuffer)
+      .composite([{ input: mosaicRegion, left: x, top: y }])
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    // S3 に上書きアップロード（元画像を完全に置き換え）
+    await uploadToS3(result, s3Key, "image/webp");
+  } catch (e) {
+    console.error("[applyMosaic] 画像処理に失敗:", e);
     return c.json(
-      {
-        success: false,
-        errors: `指定領域が画像サイズ（${imgWidth}×${imgHeight}px）を超えています。`,
-      },
-      400,
+      { success: false, errors: "画像の処理中にエラーが発生しました。" },
+      500,
     );
   }
-
-  // 指定領域をピクセル化（スケールダウン → ニアレストネイバーでスケールアップ）
-  const PIXEL_SIZE = 15;
-  const smallW = Math.max(1, Math.round(width / PIXEL_SIZE));
-  const smallH = Math.max(1, Math.round(height / PIXEL_SIZE));
-
-  const mosaicRegion = await sharp(originalBuffer)
-    .extract({ left: x, top: y, width, height })
-    .resize(smallW, smallH, { fit: "fill" })
-    .resize(width, height, { fit: "fill", kernel: "nearest" })
-    .toBuffer();
-
-  // モザイク領域を元画像に合成して WebP で書き出し
-  const result = await sharp(originalBuffer)
-    .composite([{ input: mosaicRegion, left: x, top: y }])
-    .webp({ quality: 80 })
-    .toBuffer();
-
-  // S3 に上書きアップロード（元画像を完全に置き換え）
-  await uploadToS3(result, s3Key, "image/webp");
 
   const updatedUrl = await getPresignedDownloadUrl(s3Key);
 
