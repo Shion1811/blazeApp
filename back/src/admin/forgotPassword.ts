@@ -83,20 +83,22 @@ app.post("/api/admin/forgot-password", forgotPasswordLimiter, async (c) => {
     const tokenHash = createHash("sha256").update(rawToken).digest("hex");
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1時間で失効
 
-    // 同一ユーザーの未使用トークンは新規発行時に無効化する
-    await db
-      .delete(passwordResetTokens)
-      .where(
-        and(
-          eq(passwordResetTokens.admin_id, user.id),
-          isNull(passwordResetTokens.used_at),
-        ),
-      );
+    // 同一ユーザーの未使用トークンは新規発行時に無効化する（削除と挿入を原子化）
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.admin_id, user.id),
+            isNull(passwordResetTokens.used_at),
+          ),
+        );
 
-    await db.insert(passwordResetTokens).values({
-      admin_id: user.id,
-      token_hash: tokenHash,
-      expires_at: expiresAt,
+      await tx.insert(passwordResetTokens).values({
+        admin_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+      });
     });
 
     try {

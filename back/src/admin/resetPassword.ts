@@ -120,17 +120,31 @@ app.post("/api/admin/reset-password", resetPasswordLimiter, async (c) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // パスワード更新と同時に既存セッションを無効化（再ログインを必須にする）
-  await db
-    .update(admin)
-    .set({ password: hashedPassword, token: null })
-    .where(eq(admin.id, user.id));
+  // トークンの失効とパスワード更新を同一トランザクションで行う（途中失敗時の不整合防止）
+  let tokenAlreadyUsed = false;
+  await db.transaction(async (tx) => {
+    // used_at IS NULL を条件に先にクレームすることで、同時リクエストによる二重実行を防ぐ
+    const claimed = await tx
+      .update(passwordResetTokens)
+      .set({ used_at: new Date() })
+      .where(and(eq(passwordResetTokens.id, record.id), isNull(passwordResetTokens.used_at)))
+      .returning();
 
-  // トークンを使用済みにして再利用を防ぐ
-  await db
-    .update(passwordResetTokens)
-    .set({ used_at: new Date() })
-    .where(eq(passwordResetTokens.id, record.id));
+    if (claimed.length === 0) {
+      tokenAlreadyUsed = true;
+      return;
+    }
+
+    // パスワード更新と同時に既存セッションを無効化（再ログインを必須にする）
+    await tx
+      .update(admin)
+      .set({ password: hashedPassword, token: null })
+      .where(eq(admin.id, user.id));
+  });
+
+  if (tokenAlreadyUsed) {
+    return c.json({ success: false, errors: INVALID_TOKEN_MESSAGE }, 400);
+  }
 
   return c.json(
     {
