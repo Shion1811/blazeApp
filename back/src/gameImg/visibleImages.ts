@@ -2,12 +2,13 @@
 // 管理者: 全画像 + consent_status を返す / 一般: approved のみ返す
 
 import { and, eq } from "../index.js";
-import { db, images, getPresignedDownloadUrl } from "../shared/index.js";
+import { db, images, getPresignedDownloadUrl, consentStatusSchema } from "../shared/index.js";
+import type { z } from "../index.js";
 
 export type VisibleGameImage = {
   id: string;
   url: string;
-  consent_status?: string;
+  consent_status?: z.infer<typeof consentStatusSchema>;
 };
 
 export async function getVisibleGameImages(
