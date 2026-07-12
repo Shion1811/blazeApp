@@ -1,7 +1,8 @@
 // パスワード再設定フロー統合テスト
+import { createHash } from "node:crypto";
 import { describe, it, expect, beforeEach } from "vitest";
 import { app } from "../app.js";
-import { cleanDb } from "./setup.js";
+import { cleanDb, testPool } from "./setup.js";
 import { extractCookie } from "./testHelpers.js";
 
 const D = "@reset.test";
@@ -116,6 +117,22 @@ describe("POST /api/admin/reset-password", () => {
 
   it("無効なトークンは400", async () => {
     const res = await resetPassword("this-token-does-not-exist", NEW_PASSWORD);
+    expect(res.status).toBe(400);
+  });
+
+  it("期限切れトークンは400", async () => {
+    const email = `reset-exp${D}`;
+    await register("Reset Expired", email, "Test@Password1!");
+    const token = await requestResetToken(email);
+
+    // トークンの有効期限を過去に更新
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    await testPool.query(
+      `UPDATE password_reset_tokens SET expires_at = NOW() - INTERVAL '1 hour' WHERE token_hash = $1`,
+      [tokenHash],
+    );
+
+    const res = await resetPassword(token, NEW_PASSWORD);
     expect(res.status).toBe(400);
   });
 

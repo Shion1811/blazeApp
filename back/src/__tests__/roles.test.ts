@@ -209,11 +209,15 @@ describe("owner の自己削除", () => {
     expect(memberId).toBeTruthy();
 
     // member を owner に昇格（2人のownerになる）
-    await app.request(`/api/admin/users/${memberId}/role`, {
+    const roleRes = await app.request(`/api/admin/users/${memberId}/role`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Cookie: owner1Cookie },
       body: JSON.stringify({ role: "owner" }),
     });
+    if (roleRes.status !== 200) {
+      const body = await roleRes.text();
+      throw new Error(`role update failed: ${roleRes.status} ${body}`);
+    }
 
     const res = await app.request("/api/admin/account-delete", {
       method: "DELETE",

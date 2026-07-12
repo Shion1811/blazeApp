@@ -35,11 +35,15 @@ async function registerTwoOwners(email1: string, email2: string): Promise<string
   const secondId = users.find((u) => u.email === email2)?.id;
   if (!secondId) throw new Error("2人目のユーザーが見つかりません");
 
-  await app.request(`/api/admin/users/${secondId}/role`, {
+  const roleRes = await app.request(`/api/admin/users/${secondId}/role`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Cookie: cookie1 },
     body: JSON.stringify({ role: "owner" }),
   });
+  if (roleRes.status !== 200) {
+    const body = await roleRes.text();
+    throw new Error(`role update failed: ${roleRes.status} ${body}`);
+  }
 
   return cookie1;
 }
