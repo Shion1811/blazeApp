@@ -2,7 +2,12 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// モジュールロード時ではなく初回送信時に生成する（RESEND_API_KEY未設定のテスト環境等でのimport時エラーを避けるため）
+let resend: Resend | undefined;
+function getResendClient(): Resend {
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
+}
 
 // 送信元アドレス（Resend側でドメイン検証済みのものを設定する）
 const MAIL_FROM = process.env.MAIL_FROM ?? "onboarding@resend.dev";
@@ -22,9 +27,9 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   if (process.env.NODE_ENV === "test") return;
 
-  const resetUrl = `${FRONTEND_URL}/admin/reset-password?token=${token}`;
+  const resetUrl = `${FRONTEND_URL}/admin/reset-password?token=${encodeURIComponent(token)}`;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResendClient().emails.send({
     from: MAIL_FROM,
     to,
     subject: "【西尾ブレイズ管理画面】パスワード再設定のご案内",
