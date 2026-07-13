@@ -5,10 +5,12 @@ import { and, eq } from "../index.js";
 import { db, images, getPresignedDownloadUrl, consentStatusSchema } from "../shared/index.js";
 import type { z } from "../index.js";
 
+type ConsentStatus = z.infer<typeof consentStatusSchema>;
+
 export type VisibleGameImage = {
   id: string;
   url: string;
-  consent_status?: z.infer<typeof consentStatusSchema>;
+  consent_status?: ConsentStatus;
 };
 
 export async function getVisibleGameImages(
@@ -28,7 +30,8 @@ export async function getVisibleGameImages(
     records.map(async (record) => ({
       id: record.id,
       url: await getPresignedDownloadUrl(record.path),
-      ...(isAdmin && { consent_status: record.consent_status }),
+      // DBへの書き込みはconsentStatusSchemaのバリデーションを経由するため、値はConsentStatusのいずれかである
+      ...(isAdmin && { consent_status: record.consent_status as ConsentStatus }),
     })),
   );
 }
