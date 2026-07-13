@@ -4,11 +4,13 @@
 
 import { desc, eq } from "../index.js";
 import { getTableColumns } from "drizzle-orm";
-import { db, game, admin, toMediaUrl, getOptionalUser } from "../shared/index.js";
+import { db, game, admin, toMediaUrl, getOptionalUser, parsePage, buildPagination } from "../shared/index.js";
 import { getVisibleGameImages } from "./visibleImages.js";
 import type { Context } from "hono";
 
 export const getAll = async (c: Context) => {
+  const { page, limit, offset } = parsePage(c);
+
   const [user, all] = await Promise.all([
     getOptionalUser(c),
     db
@@ -22,6 +24,8 @@ export const getAll = async (c: Context) => {
   ]);
   const isAdmin = user !== null;
 
+  // 可視性フィルタが必要なため、絞り込み後に件数が変わる。
+  // そのためDB側でのLIMIT/OFFSETではなく、フィルタ後の配列をページ分割する。
   const filtered = (
     await Promise.all(
       all.map(async (item) => {
@@ -43,5 +47,15 @@ export const getAll = async (c: Context) => {
     )
   ).filter((item) => item !== null);
 
-  return c.json({ success: true, total: filtered.length, data: filtered }, 200);
+  const total = filtered.length;
+  const paged = filtered.slice(offset, offset + limit);
+
+  return c.json(
+    {
+      success: true,
+      data: paged,
+      pagination: buildPagination(page, limit, total),
+    },
+    200,
+  );
 };
