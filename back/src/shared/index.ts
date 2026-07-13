@@ -73,5 +73,8 @@ export {
 // 汎用CRUDルーター
 export { createCrudRouter } from "../utils/crudRouter.js";
 
+// ページネーション
+export { parsePage, buildPagination } from "../utils/pagination.js";
+
 // メール送信
 export { sendPasswordResetEmail } from "../utils/mail.js";
