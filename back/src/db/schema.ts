@@ -116,6 +116,9 @@ export const images = pgTable("images", {
   ...baseFields,
   // S3上のパス
   path: varchar("path", { length: 500 }).notNull(),
+  // 掲載同意ステータス（試合風景画像のみ使用）
+  // 'pending': 未確認（デフォルト）, 'approved': 同意済み, 'rejected': 拒否
+  consent_status: varchar("consent_status", { length: 10 }).notNull().default("pending"),
   // どのコンテンツに紐づくか（各FK、使う方だけ値が入る）
   news_id: uuid("news_id").references(() => news.id, { onDelete: "cascade" }),
   inquiry_id: uuid("inquiry_id").references(() => inquiry.id, {
@@ -182,6 +185,20 @@ export const deletionApprovals = pgTable("deletion_approvals", {
   uniqueApproval: unique("deletion_approvals_request_approved_uniq").on(t.request_id, t.approved_by),
 }));
 
+// パスワード再設定トークン（メールで送るのはtokenの生値、DBにはハッシュのみ保存）
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  ...baseFields,
+  admin_id: uuid("admin_id")
+    .references(() => admin.id, { onDelete: "cascade" })
+    .notNull(),
+  // sha256ハッシュ（hex64文字）。生トークンはDBに保存しない
+  token_hash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  // 発行から1時間で失効
+  expires_at: timestamp("expires_at").notNull(),
+  // 使用済みなら日時が入る（再利用防止）
+  used_at: timestamp("used_at"),
+});
+
 // バリデーションスキーマ
 
 export const emailSchema = z
@@ -214,3 +231,5 @@ export const bodySchema = stringField(1, 2000, "内容");
 
 // 問い合わせ用の名前バリデーション
 export const inquiryNameSchema = stringField(1, 16, "名前");
+
+export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);

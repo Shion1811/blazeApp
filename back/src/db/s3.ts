@@ -9,6 +9,7 @@ import {
   // S3の取得コマンド
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import type { Readable } from "node:stream";
 // 署名付きURL生成
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -55,6 +56,25 @@ export async function deleteFromS3(key: string): Promise<void> {
       Key: key,
     }),
   );
+}
+
+/**
+ * S3からファイルをダウンロードしてBufferで返す
+ * @param key - S3上のパス
+ */
+export async function downloadFromS3(key: string): Promise<Buffer> {
+  const response = await s3Client.send(
+    new GetObjectCommand({ Bucket: BUCKET, Key: key }),
+  );
+  if (!response.Body) {
+    throw new Error(`S3オブジェクトの取得に失敗しました（Bodyが空です）: ${key}`);
+  }
+  const stream = response.Body as Readable;
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
 }
 
 /**

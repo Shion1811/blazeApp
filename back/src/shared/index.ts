@@ -19,6 +19,7 @@ export {
   files,
   deletionRequests,
   deletionApprovals,
+  passwordResetTokens,
 } from "../db/schema.js";
 
 // バリデーションスキーマ
@@ -28,10 +29,11 @@ export {
   titleSchema,
   bodySchema,
   inquiryNameSchema,
+  consentStatusSchema,
 } from "../db/schema.js";
 
 // 認証ミドルウェア
-export { authToken } from "../db/token.js";
+export { authToken, getOptionalUser } from "../db/token.js";
 
 // ロールガード
 export { requireOwner, requireAdmin } from "../db/roleGuard.js";
@@ -40,6 +42,7 @@ export { requireOwner, requireAdmin } from "../db/roleGuard.js";
 export {
   uploadToS3,
   deleteFromS3,
+  downloadFromS3,
   getPresignedDownloadUrl,
   generateS3Key,
 } from "../db/s3.js";
@@ -69,3 +72,9 @@ export {
 
 // 汎用CRUDルーター
 export { createCrudRouter } from "../utils/crudRouter.js";
+
+// ページネーション
+export { parsePage, buildPagination } from "../utils/pagination.js";
+
+// メール送信
+export { sendPasswordResetEmail } from "../utils/mail.js";

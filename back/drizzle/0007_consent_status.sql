@@ -1,0 +1,1 @@
+ALTER TABLE "images" ADD COLUMN "consent_status" varchar(10) NOT NULL DEFAULT 'pending';
