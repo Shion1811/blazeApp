@@ -3,7 +3,6 @@
 
 import sharp from "sharp";
 import { eq } from "../index.js";
-import { z } from "zod";
 import {
   db,
   images,
@@ -11,14 +10,8 @@ import {
   uploadToS3,
   getPresignedDownloadUrl,
 } from "../shared/index.js";
+import { mosaicSchema, isWithinImageBounds, computeMosaicScale } from "./mosaicLogic.js";
 import type { Context } from "hono";
-
-const mosaicSchema = z.object({
-  x: z.number().int().min(0),
-  y: z.number().int().min(0),
-  width: z.number().int().min(1),
-  height: z.number().int().min(1),
-});
 
 export const applyMosaic = async (c: Context) => {
   const imageId = c.req.param("imageId");
@@ -60,7 +53,7 @@ export const applyMosaic = async (c: Context) => {
     const imgWidth = metadata.width ?? 0;
     const imgHeight = metadata.height ?? 0;
 
-    if (x + width > imgWidth || y + height > imgHeight) {
+    if (!isWithinImageBounds({ x, y, width, height }, imgWidth, imgHeight)) {
       return c.json(
         {
           success: false,
@@ -72,8 +65,7 @@ export const applyMosaic = async (c: Context) => {
 
     // 指定領域をピクセル化（スケールダウン → ニアレストネイバーでスケールアップ）
     const PIXEL_SIZE = 15;
-    const smallW = Math.max(1, Math.round(width / PIXEL_SIZE));
-    const smallH = Math.max(1, Math.round(height / PIXEL_SIZE));
+    const { smallW, smallH } = computeMosaicScale(width, height, PIXEL_SIZE);
 
     const mosaicRegion = await sharp(originalBuffer)
       .extract({ left: x, top: y, width, height })
