@@ -30,6 +30,7 @@ export {
   bodySchema,
   inquiryNameSchema,
   consentStatusSchema,
+  categorySchema,
 } from "../db/schema.js";
 
 // 認証ミドルウェア

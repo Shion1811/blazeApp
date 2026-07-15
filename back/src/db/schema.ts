@@ -47,6 +47,8 @@ export const news = pgTable("news", {
   img: s3Path("img"),
   // 'news' または 'media' でニュースとメディア情報を分ける
   type: varchar("type", { length: 10 }).notNull(),
+  // カテゴリー（自由入力・任意。固定の選択肢は持たず、投稿時に都度テキストで追加できる）
+  category: varchar("category", { length: 30 }),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
   admin_id: uuid("admin_id").references(() => admin.id, {
     onDelete: "set null",
@@ -228,6 +230,8 @@ const stringField = (min: number, max: number, label: string) =>
 
 export const titleSchema = stringField(1, 50, "タイトル");
 export const bodySchema = stringField(1, 2000, "内容");
+// カテゴリーは自由入力（固定enumなし）。頻出カテゴリーはAPI側で使用頻度から算出する
+export const categorySchema = stringField(1, 30, "カテゴリー");
 
 // 問い合わせ用の名前バリデーション
 export const inquiryNameSchema = stringField(1, 16, "名前");
