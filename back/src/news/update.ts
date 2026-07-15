@@ -6,6 +6,7 @@ import {
   news,
   titleSchema,
   bodySchema,
+  categorySchema,
   replaceMediaOnS3,
 } from "../shared/index.js";
 import type { Context } from "hono";
@@ -25,11 +26,13 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
     const schema = z.object({
       title: titleSchema.optional(),
       body: bodySchema.optional(),
+      category: categorySchema.optional(),
     });
 
     const result = schema.safeParse({
       title: body["title"] || undefined,
       body: body["body"] || undefined,
+      category: body["category"] || undefined,
     });
 
     if (!result.success) {
@@ -48,6 +51,7 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
     const updateData: Record<string, unknown> = { updated_at: new Date() };
     if (result.data.title) updateData.title = result.data.title;
     if (result.data.body) updateData.body = result.data.body;
+    if (result.data.category) updateData.category = result.data.category;
 
     // 新しい画像がアップロードされた場合は差し替え
     const imageFile = body["image"];

@@ -6,6 +6,7 @@ import {
   news,
   titleSchema,
   bodySchema,
+  categorySchema,
   processImageUpload,
 } from "../shared/index.js";
 import type { Context } from "hono";
@@ -15,8 +16,12 @@ export function createCreate(type: "news" | "media", label: string, s3Prefix: st
     const user = c.get("user") as { id: string };
     const body = await c.req.parseBody();
 
-    const schema = z.object({ title: titleSchema, body: bodySchema });
-    const result = schema.safeParse({ title: body["title"], body: body["body"] });
+    const schema = z.object({ title: titleSchema, body: bodySchema, category: categorySchema.optional() });
+    const result = schema.safeParse({
+      title: body["title"],
+      body: body["body"],
+      category: body["category"] || undefined,
+    });
 
     if (!result.success) {
       return c.json(
@@ -49,7 +54,14 @@ export function createCreate(type: "news" | "media", label: string, s3Prefix: st
 
     const inserted = await db
       .insert(news)
-      .values({ title, body: bodyText, img: imgPath, type, admin_id: user.id })
+      .values({
+        title,
+        body: bodyText,
+        img: imgPath,
+        type,
+        admin_id: user.id,
+        category: result.data.category ?? null,
+      })
       .returning();
 
     return c.json({ success: true, message: `${label}を投稿しました。`, data: inserted[0] }, 200);
