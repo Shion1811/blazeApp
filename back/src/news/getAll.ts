@@ -23,7 +23,7 @@ export function createGetAll(type: "news" | "media") {
         .offset(offset),
       db.select({ total: count() }).from(news).where(eq(news.type, type)),
     ]);
-    const total = totalResult[0]?.total ?? 0;
+    const total = Number(totalResult[0]?.total ?? 0);
 
     const withUrls = await Promise.all(
       all.map(async (item) => ({

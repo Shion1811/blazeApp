@@ -17,7 +17,7 @@ export const getAll = async (c: Context) => {
       .offset(offset),
     db.select({ total: count() }).from(inquiry),
   ]);
-  const total = totalResult[0]?.total ?? 0;
+  const total = Number(totalResult[0]?.total ?? 0);
 
   // 画像の署名付きURLを付与
   const inquiriesWithUrls = await Promise.all(
