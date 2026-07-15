@@ -27,6 +27,9 @@ import mediaApp from "./media/index.js";
 
 export const app = new Hono();
 
+// ヘルスチェック（ECS/ALBのターゲットグループ監視用）
+app.get("/health", (c) => c.json({ success: true }));
+
 // アクセスログ（テスト時は NODE_ENV=test で抑制）
 if (process.env.NODE_ENV !== "test") {
   app.use("*", logger());
