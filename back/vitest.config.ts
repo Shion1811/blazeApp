@@ -12,5 +12,7 @@ export default defineConfig({
     isolate: false,
     // マイグレーションをテスト全体で1回だけ実行
     globalSetup: "./src/__tests__/globalSetup.ts",
+    // 全テストファイルより先にS3モックを登録（詳細はs3Mock.setup.ts参照）
+    setupFiles: ["./src/__tests__/s3Mock.setup.ts"],
   },
 });

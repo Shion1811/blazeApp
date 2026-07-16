@@ -1,18 +1,9 @@
 // 試合風景API CRUD統合テスト
-// uploadToS3 / deleteFromS3 は実際のAWSに繋がず、テスト用にモックする
-import { describe, it, expect, beforeEach, vi } from "vitest";
+// S3への実アクセスはsetupFiles(s3Mock.setup.ts)でグローバルにモックされている
+import { describe, it, expect, beforeEach } from "vitest";
 import { app } from "../app.js";
 import { cleanDb, testPool } from "./setup.js";
 import { registerAndLogin } from "./testHelpers.js";
-
-vi.mock("../db/s3.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../db/s3.js")>();
-  return {
-    ...actual,
-    uploadToS3: vi.fn(async () => {}),
-    deleteFromS3: vi.fn(async () => {}),
-  };
-});
 
 const D = "@gameImg.test";
 
