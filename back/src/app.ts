@@ -11,6 +11,7 @@ import { db } from "./db/index.js";
 import registerApp from "./admin/register.js";
 import loginApp from "./admin/login.js";
 import logoutApp from "./admin/logout.js";
+import meApp from "./admin/me.js";
 import accountDeleteApp from "./admin/accountDelete.js";
 import accountRecoverApp from "./admin/accountRecover.js";
 import userManagementApp from "./admin/userManagement.js";
@@ -55,6 +56,7 @@ app.use(
 app.route("/", registerApp);
 app.route("/", loginApp);
 app.route("/", logoutApp);
+app.route("/", meApp);
 app.route("/", accountDeleteApp);
 app.route("/", accountRecoverApp);
 app.route("/", userManagementApp);
