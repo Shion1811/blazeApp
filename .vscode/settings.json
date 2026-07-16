@@ -1,0 +1,12 @@
+{
+  // 1. すべてのファイルで「保存時に自動フォーマット」を有効にする
+  "editor.formatOnSave": true,
+
+  // 2. デフォルトのフォーマッタを「Biome」に指定する
+  "editor.defaultFormatter": "biomejs.biome",
+
+  // 3. 保存時にLinter（コードの怪しい部分の指摘・自動修正）も走らせる
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit"
+  }
+}
