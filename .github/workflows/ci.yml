@@ -74,5 +74,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Format & lint check (Biome)
+        run: npm run check
+
       - name: Build
         run: npm run build
