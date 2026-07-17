@@ -15,6 +15,7 @@ import {
   admin,
   emailSchema,
   passwordBaseSchema,
+  adminNameSchema,
   redisClient,
 } from "../shared/index.js";
 
@@ -52,10 +53,7 @@ export const comparePassword = async (
 app.post("/api/admin/register", registerLimiter, async (c) => {
   const userRegisterSchema = z
     .object({
-      name: z
-        .string()
-        .min(1, "名前を入力してください。")
-        .max(20, "20文字以内で入力してください。"),
+      name: adminNameSchema,
       email: emailSchema,
       password: passwordBaseSchema,
       passwordConfirmation: z.string(),

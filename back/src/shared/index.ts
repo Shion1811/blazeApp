@@ -24,8 +24,10 @@ export {
 
 // バリデーションスキーマ
 export {
+  VALIDATION_LIMITS,
   emailSchema,
   passwordBaseSchema,
+  adminNameSchema,
   titleSchema,
   bodySchema,
   inquiryNameSchema,
