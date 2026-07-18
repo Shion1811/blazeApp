@@ -20,7 +20,8 @@ import type { Context } from "hono";
 export const getAll = async (c: Context) => {
   const { page, limit, offset } = parsePage(c);
   const user = await getOptionalUser(c);
-  const isAdmin = user !== null;
+  // memberは一般ユーザーと同じ可視性（承認済みのみ）にする。owner/adminのみ全件+ステータスを見られる
+  const isAdmin = user !== null && (user.role === "owner" || user.role === "admin");
 
   // 一般ユーザーは approved 画像が1枚もない投稿を非表示にするため、DB側でEXISTS絞り込みする
   const visibleCondition = isAdmin
