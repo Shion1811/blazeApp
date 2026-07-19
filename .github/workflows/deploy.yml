@@ -1,0 +1,77 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [main, dev] # main または dev にpushされたら自動デプロイ
+
+permissions:
+  id-token: write # AWS OIDC連携に必要
+  contents: read
+
+jobs:
+  # 1. 念のためデプロイ前にもう一度テストを通す
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # 2. フロントエンド（Next.js）を Vercel にデプロイ
+  #    main への push は production、dev への push は preview としてデプロイする
+  deploy-frontend:
+    needs: ci
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ENV: ${{ github.ref_name == 'main' && 'production' || 'preview' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=${{ env.VERCEL_ENV }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+  # 3. バックエンド（Hono）を ECS Fargate にデプロイ（infra/lib/backend-stack.ts 参照）
+  #    デプロイ前に Secrets Manager に `blazeapp/backend` シークレットを作成しておくこと
+  deploy-backend:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install CDK app dependencies
+        working-directory: infra
+        run: npm ci
+
+      # OIDCを利用してAWSに一時クレデンシャルで認証
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsWorkflowRole
+          aws-region: ap-northeast-1
+
+      # back/Dockerfile からビルドしてECS Fargateにデプロイ
+      - name: Deploy to AWS (ECS Fargate)
+        working-directory: infra
+        run: npx cdk deploy --require-approval never
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ap-northeast-1
