@@ -7,8 +7,15 @@ import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as logs from "aws-cdk-lib/aws-logs";
 
+export interface BackendStackProps extends cdk.StackProps {
+  // "prod" | "dev" など。スタック名・シークレット名の分離に使う（infra/bin/infra.ts参照）
+  stage: string;
+}
+
 /**
  * back（Hono API）を ECS Fargate + ALB で常駐起動するスタック。
+ * stageごと（prod/dev）に別スタックとしてデプロイされ、VPC・ECSクラスタ・ALB・シークレットは
+ * 完全に独立する。dev への変更が prod に影響することはない。
  *
  * 前提・仮の値（実際の運用開始前に見直すこと）:
  * - DB(Postgres)・Redisは本スタックでは作成しない。DATABASE_URL / REDIS_URL で
@@ -17,12 +24,14 @@ import * as logs from "aws-cdk-lib/aws-logs";
  *   パブリックIPを持たせて配置）。DBがVPC外にある間はこれで動くが、将来RDS等をVPC内に
  *   置く場合はプライベートサブネット + NATゲートウェイに切り替えること。
  * - 機微な環境変数は Secrets Manager のシークレット1つにJSONでまとめて格納する想定。
- *   デプロイ前に `blazeapp/backend` という名前のシークレットを手動作成し、
- *   下記 SECRET_ENV_KEYS のキーを持つJSONを値として登録しておくこと。
+ *   デプロイ前に stageごとの `blazeapp/backend-{stage}`（例: blazeapp/backend-prod,
+ *   blazeapp/backend-dev）という名前のシークレットを手動作成し、下記 SECRET_ENV_KEYS の
+ *   キーを持つJSONを値として登録しておくこと。
  */
 export class BackendStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: BackendStackProps) {
     super(scope, id, props);
+    const { stage } = props;
 
     // back/src が process.env から読む値のうち、機微情報として扱うキー
     // （Secrets Manager 側にこの名前のキーを用意しておく）
@@ -50,11 +59,11 @@ export class BackendStack extends cdk.Stack {
 
     const cluster = new ecs.Cluster(this, "Cluster", { vpc });
 
-    // デプロイ前に手動作成しておく前提のシークレット
+    // デプロイ前に手動作成しておく前提のシークレット（stageごとに別シークレット）
     const appSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       "AppSecret",
-      "blazeapp/backend",
+      `blazeapp/backend-${stage}`,
     );
 
     const service = new ecsPatterns.ApplicationLoadBalancedFargateService(
