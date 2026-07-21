@@ -81,9 +81,12 @@ jobs:
         run: |
           npx cdk deploy --require-approval never \
             --context stage=${{ github.ref_name == 'main' && 'prod' || 'dev' }} \
-            --context corsOrigin=${{ github.ref_name == 'main' && vars.PROD_CORS_ORIGIN || vars.DEV_CORS_ORIGIN }} \
-            --context frontendUrl=${{ github.ref_name == 'main' && vars.PROD_FRONTEND_URL || vars.DEV_FRONTEND_URL }} \
-            --context mailFrom=${{ github.ref_name == 'main' && vars.PROD_MAIL_FROM || vars.DEV_MAIL_FROM }}
+            --context "corsOrigin=$CORS_ORIGIN" \
+            --context "frontendUrl=$FRONTEND_URL" \
+            --context "mailFrom=$MAIL_FROM"
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ap-northeast-1
+          CORS_ORIGIN: ${{ github.ref_name == 'main' && vars.PROD_CORS_ORIGIN || vars.DEV_CORS_ORIGIN }}
+          FRONTEND_URL: ${{ github.ref_name == 'main' && vars.PROD_FRONTEND_URL || vars.DEV_FRONTEND_URL }}
+          MAIL_FROM: ${{ github.ref_name == 'main' && vars.PROD_MAIL_FROM || vars.DEV_MAIL_FROM }}
