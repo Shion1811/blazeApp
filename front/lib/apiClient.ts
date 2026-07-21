@@ -1,6 +1,8 @@
 type RequestConfig = RequestInit & {
 	params?: Record<string, string | number>;
 	timeout?: number;
+	// ログインAPIなど、呼び出し側で401を自前ハンドリングしたい場合にtrueにする
+	skipAuthRedirect?: boolean;
 };
 
 // backのベースURL。Server Component側（front/lib/auth.ts）とも共有する単一の定義元
@@ -20,7 +22,7 @@ export const apiClient = async <T>(
 	endpoint: string,
 	config: RequestConfig = {},
 ): Promise<T> => {
-	const { params, timeout = 10000, headers, ...customConfig } = config;
+	const { params, timeout = 10000, headers, skipAuthRedirect, ...customConfig } = config;
 
 	const url = new URL(`${API_BASE_URL}${endpoint}`);
 	if (params) {
@@ -50,7 +52,14 @@ export const apiClient = async <T>(
 		clearTimeout(id);
 
 		if (!response.ok) {
-			if (response.status === 401 && typeof window !== "undefined") {
+			// ログインAPI自体の401（メールアドレス/パスワード誤り）はリダイレクト対象にしない。
+			// 既に/loginにいる場合も無限リダイレクトを避けるため対象外にする。
+			const shouldRedirectToLogin =
+				response.status === 401 &&
+				!skipAuthRedirect &&
+				typeof window !== "undefined" &&
+				window.location.pathname !== "/login";
+			if (shouldRedirectToLogin) {
 				window.location.href = "/login";
 			}
 			throw new ApiError(`API Error: ${response.statusText}`, response.status);
