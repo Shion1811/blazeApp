@@ -44,10 +44,21 @@ export class BackendStack extends cdk.Stack {
       "RESEND_API_KEY",
     ] as const;
 
-    // 非機微な設定値。CDKデプロイ時に -c cors_origin=... 等で上書き可能
-    const corsOrigin = this.node.tryGetContext("corsOrigin") ?? "https://example.com";
-    const frontendUrl = this.node.tryGetContext("frontendUrl") ?? "https://example.com";
-    const mailFrom = this.node.tryGetContext("mailFrom") ?? "no-reply@example.com";
+    // 非機微な設定値。CDKデプロイ時に -c corsOrigin=... 等で必ず指定する。
+    // 指定し忘れてダミードメインのままデプロイされる（CORSエラーやメール内リンク破損に繋がる）のを防ぐため、
+    // 未指定ならここでデプロイを止める。
+    const requireContext = (key: string): string => {
+      const value = this.node.tryGetContext(key);
+      if (typeof value !== "string" || value.length === 0) {
+        throw new Error(
+          `-c ${key}=... の指定が必要です（例: npx cdk deploy -c ${key}=https://example.com -c stage=${stage}）`,
+        );
+      }
+      return value;
+    };
+    const corsOrigin = requireContext("corsOrigin");
+    const frontendUrl = requireContext("frontendUrl");
+    const mailFrom = requireContext("mailFrom");
 
     const vpc = new ec2.Vpc(this, "Vpc", {
       maxAzs: 2,
