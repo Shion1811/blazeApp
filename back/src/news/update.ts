@@ -6,6 +6,7 @@ import {
   news,
   titleSchema,
   bodySchema,
+  categorySchema,
   replaceMediaOnS3,
 } from "../shared/index.js";
 import type { Context } from "hono";
@@ -22,14 +23,23 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
 
     const body = await c.req.parseBody();
 
+    // categoryは「未送信=変更なし」と「空文字送信=カテゴリー削除」を区別する必要がある。
+    // どちらも body["category"] || undefined にまとめてしまうと、削除が「変更なし」に
+    // 化けて古い値が残り続けてしまう。
+    const rawCategory = body["category"];
+    const categoryProvided = typeof rawCategory === "string";
+    const categoryCleared = categoryProvided && rawCategory.trim() === "";
+
     const schema = z.object({
       title: titleSchema.optional(),
       body: bodySchema.optional(),
+      category: categorySchema.optional(),
     });
 
     const result = schema.safeParse({
       title: body["title"] || undefined,
       body: body["body"] || undefined,
+      category: categoryProvided && !categoryCleared ? rawCategory : undefined,
     });
 
     if (!result.success) {
@@ -48,6 +58,8 @@ export function createUpdate(type: "news" | "media", label: string, s3Prefix: st
     const updateData: Record<string, unknown> = { updated_at: new Date() };
     if (result.data.title) updateData.title = result.data.title;
     if (result.data.body) updateData.body = result.data.body;
+    if (result.data.category) updateData.category = result.data.category;
+    else if (categoryCleared) updateData.category = null;
 
     // 新しい画像がアップロードされた場合は差し替え
     const imageFile = body["image"];

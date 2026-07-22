@@ -23,7 +23,8 @@ export const getById = async (c: Context) => {
       .leftJoin(admin, eq(game.admin_id, admin.id))
       .where(eq(game.id, id)),
   ]);
-  const isAdmin = user !== null;
+  // memberは一般ユーザーと同じ可視性（承認済みのみ）にする。owner/adminのみ全件+ステータスを見られる
+  const isAdmin = user !== null && (user.role === "owner" || user.role === "admin");
 
   const item = result[0];
   if (!item) return c.json({ success: false, errors: "試合風景が見つかりません。" }, 404);

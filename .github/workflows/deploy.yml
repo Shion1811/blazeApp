@@ -5,7 +5,6 @@ on:
     branches: [main, dev] # main または dev にpushされたら自動デプロイ
 
 permissions:
-  id-token: write # AWS OIDC連携に必要
   contents: read
 
 jobs:
@@ -42,10 +41,14 @@ jobs:
         run: vercel deploy --prebuilt ${{ github.ref_name == 'main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
 
   # 3. バックエンド（Hono）を ECS Fargate にデプロイ（infra/lib/backend-stack.ts 参照）
-  #    デプロイ前に Secrets Manager に `blazeapp/backend` シークレットを作成しておくこと
+  #    デプロイ前に Secrets Manager に `blazeapp/backend-prod` / `blazeapp/backend-dev` シークレットを作成しておくこと
   deploy-backend:
     needs: ci
     runs-on: ubuntu-latest
+    # AWS OIDC連携に必要な権限はこのジョブでのみ使うため、ここに絞って付与する
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -69,9 +72,21 @@ jobs:
           aws-region: ap-northeast-1
 
       # back/Dockerfile からビルドしてECS Fargateにデプロイ
+      # main→prod、dev→dev の別スタックにデプロイされ、インフラが完全に分離される（infra/bin/infra.ts参照）
+      # corsOrigin/frontendUrl/mailFrom は Settings > Secrets and variables > Actions > Variables で
+      # PROD_CORS_ORIGIN / PROD_FRONTEND_URL / PROD_MAIL_FROM（dev用は DEV_ 接頭辞）を設定しておくこと。
+      # 未設定のままだと infra/lib/backend-stack.ts のガードによりここでデプロイが失敗する（意図的な挙動）。
       - name: Deploy to AWS (ECS Fargate)
         working-directory: infra
-        run: npx cdk deploy --require-approval never
+        run: |
+          npx cdk deploy --require-approval never \
+            --context stage=${{ github.ref_name == 'main' && 'prod' || 'dev' }} \
+            --context "corsOrigin=$CORS_ORIGIN" \
+            --context "frontendUrl=$FRONTEND_URL" \
+            --context "mailFrom=$MAIL_FROM"
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ap-northeast-1
+          CORS_ORIGIN: ${{ github.ref_name == 'main' && vars.PROD_CORS_ORIGIN || vars.DEV_CORS_ORIGIN }}
+          FRONTEND_URL: ${{ github.ref_name == 'main' && vars.PROD_FRONTEND_URL || vars.DEV_FRONTEND_URL }}
+          MAIL_FROM: ${{ github.ref_name == 'main' && vars.PROD_MAIL_FROM || vars.DEV_MAIL_FROM }}

@@ -143,6 +143,35 @@ describe("authToken ミドルウェア", () => {
   });
 });
 
+// --- Me ---
+
+describe("GET /api/admin/me", () => {
+  it("ログイン中はユーザー情報を返す", async () => {
+    await register("Test User", `me${D}`, "Test@Password1!");
+    const loginRes = await login(`me${D}`, "Test@Password1!");
+    const cookie = extractCookie(loginRes.headers.get("set-cookie") ?? "");
+
+    const res = await app.request("/api/admin/me", { headers: { Cookie: cookie } });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { success: boolean; data: { email: string; role: string } };
+    expect(body.success).toBe(true);
+    expect(body.data.email).toBe(`me${D}`);
+    expect(body.data).not.toHaveProperty("token");
+    expect(body.data).not.toHaveProperty("password");
+  });
+
+  it("Cookie なしは 401", async () => {
+    expect((await app.request("/api/admin/me")).status).toBe(401);
+  });
+
+  it("無効な Cookie は 401", async () => {
+    const res = await app.request("/api/admin/me", {
+      headers: { Cookie: "token=invalidtoken123" },
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
 // --- Account Delete ---
 
 describe("DELETE /api/admin/account-delete", () => {

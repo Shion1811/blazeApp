@@ -47,6 +47,8 @@ export const news = pgTable("news", {
   img: s3Path("img"),
   // 'news' または 'media' でニュースとメディア情報を分ける
   type: varchar("type", { length: 10 }).notNull(),
+  // カテゴリー（自由入力・任意。固定の選択肢は持たず、投稿時に都度テキストで追加できる）
+  category: varchar("category", { length: 30 }),
   // 投稿した管理者のID（アカウント削除時はNULLになる）
   admin_id: uuid("admin_id").references(() => admin.id, {
     onDelete: "set null",
@@ -201,11 +203,26 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 
 // バリデーションスキーマ
 
+// 文字数上限などの制約値。ここが唯一の定義元（single source of truth）。
+// front側にはこの値を `npm run sync:validation` (back/scripts/exportValidationLimits.ts) で
+// front/lib/validation/limits.generated.json として書き出し、front/lib/validation/schemas.ts が
+// 同じ制約でzodスキーマを組み立てる。数値を変えたら必ず sync:validation を実行すること。
+export const VALIDATION_LIMITS = {
+  email: { max: 255 },
+  // bcryptは72バイト以上を無音で切り捨てるため上限を明示
+  password: { min: 8, max: 72 },
+  adminName: { min: 1, max: 20 },
+  title: { min: 1, max: 50 },
+  body: { min: 1, max: 2000 },
+  category: { min: 1, max: 30 },
+  inquiryName: { min: 1, max: 16 },
+} as const;
+
 export const emailSchema = z
   .string()
   .email("メールアドレス形式が正しくありません。")
   // DBのvarchar(255)に合わせた上限
-  .max(255, "メールアドレスは255文字以内で入力してください。")
+  .max(VALIDATION_LIMITS.email.max, `メールアドレスは${VALIDATION_LIMITS.email.max}文字以内で入力してください。`)
   .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます")
   .refine((val) => val.split("@").length === 2, {
     message: "@は1つだけ使用してください",
@@ -213,9 +230,8 @@ export const emailSchema = z
 
 export const passwordBaseSchema = z
   .string()
-  .min(8, "パスワードは8文字以上で入力してください。")
-  // bcryptは72バイト以上を無音で切り捨てるため上限を明示
-  .max(72, "パスワードは72文字以内で入力してください。")
+  .min(VALIDATION_LIMITS.password.min, `パスワードは${VALIDATION_LIMITS.password.min}文字以上で入力してください。`)
+  .max(VALIDATION_LIMITS.password.max, `パスワードは${VALIDATION_LIMITS.password.max}文字以内で入力してください。`)
   .regex(/^[\x21-\x7e]+$/, "半角英数字・記号のみ使用できます。");
 
 // 投稿系の共通バリデーション（設計書のルールに基づく）
@@ -226,10 +242,21 @@ const stringField = (min: number, max: number, label: string) =>
     .min(min, `${label}を入力してください。`)
     .max(max, `${label}は${max}文字以内で入力してください。`);
 
-export const titleSchema = stringField(1, 50, "タイトル");
-export const bodySchema = stringField(1, 2000, "内容");
+export const adminNameSchema = stringField(
+  VALIDATION_LIMITS.adminName.min,
+  VALIDATION_LIMITS.adminName.max,
+  "名前",
+);
+export const titleSchema = stringField(VALIDATION_LIMITS.title.min, VALIDATION_LIMITS.title.max, "タイトル");
+export const bodySchema = stringField(VALIDATION_LIMITS.body.min, VALIDATION_LIMITS.body.max, "内容");
+// カテゴリーは自由入力（固定enumなし）。頻出カテゴリーはAPI側で使用頻度から算出する
+export const categorySchema = stringField(VALIDATION_LIMITS.category.min, VALIDATION_LIMITS.category.max, "カテゴリー");
 
 // 問い合わせ用の名前バリデーション
-export const inquiryNameSchema = stringField(1, 16, "名前");
+export const inquiryNameSchema = stringField(
+  VALIDATION_LIMITS.inquiryName.min,
+  VALIDATION_LIMITS.inquiryName.max,
+  "名前",
+);
 
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);

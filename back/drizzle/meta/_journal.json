@@ -64,6 +64,13 @@
       "when": 1783550000000,
       "tag": "0008_password_reset_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784850000000,
+      "tag": "0009_add_news_category",
+      "breakpoints": true
     }
   ]
 }

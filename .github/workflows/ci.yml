@@ -35,16 +35,16 @@ jobs:
     defaults:
       run:
         working-directory: back
+    # back/.env.test は秘匿情報を含まないテスト専用のダミー値だが.gitignore対象でリポジトリに含まれないため、
+    # CI実行環境（postgres/redisサービスのポート等）に合わせてここで明示的に設定する
     env:
-      # back/.env.testはgitignore対象のためCI上には存在しない。
-      # docker-compose.test.ymlのtest-db/test-redisと同じポート・認証情報をここで明示する。
       DATABASE_URL: postgres://test:test@localhost:5433/test_db
       REDIS_URL: redis://localhost:6380
+      NODE_ENV: test
       AWS_REGION: ap-northeast-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_S3_BUCKET: test-bucket
-      NODE_ENV: test
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -83,6 +83,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Format & lint check (Biome)
+        run: npm run check
 
       - name: Build
         run: npm run build

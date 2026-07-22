@@ -7,15 +7,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Shion1811/blazeApp.git"
+    "url": "git+https://github.com/vantan-production/blazeApp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Shion1811/blazeApp/issues"
+    "url": "https://github.com/vantan-production/blazeApp/issues"
   },
-  "homepage": "https://github.com/Shion1811/blazeApp#readme",
+  "homepage": "https://github.com/vantan-production/blazeApp#readme",
   "description": "",
   "dependencies": {
     "@hono/node-server": "^2.0.0",

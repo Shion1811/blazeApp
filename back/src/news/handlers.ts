@@ -6,6 +6,7 @@ import { createGetById } from "./getById.js";
 import { createCreate } from "./create.js";
 import { createUpdate } from "./update.js";
 import { createRemove } from "./delete.js";
+import { createGetCategories } from "./getCategories.js";
 
 type NewsType = "news" | "media";
 
@@ -20,5 +21,6 @@ export function createNewsTypeHandlers(
     create: createCreate(type, label, s3Prefix),
     update: createUpdate(type, label, s3Prefix),
     remove: createRemove(type, label),
+    getCategories: createGetCategories(type),
   };
 }
