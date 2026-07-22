@@ -35,6 +35,16 @@ jobs:
     defaults:
       run:
         working-directory: back
+    # back/.env.test は秘匿情報を含まないテスト専用のダミー値だが.gitignore対象でリポジトリに含まれないため、
+    # CI実行環境（postgres/redisサービスのポート等）に合わせてここで明示的に設定する
+    env:
+      DATABASE_URL: postgres://test:test@localhost:5433/test_db
+      REDIS_URL: redis://localhost:6380
+      NODE_ENV: test
+      AWS_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_S3_BUCKET: test-bucket
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
