@@ -22,7 +22,13 @@ export const apiClient = async <T>(
 	endpoint: string,
 	config: RequestConfig = {},
 ): Promise<T> => {
-	const { params, timeout = 10000, headers, skipAuthRedirect, ...customConfig } = config;
+	const {
+		params,
+		timeout = 10000,
+		headers,
+		skipAuthRedirect,
+		...customConfig
+	} = config;
 
 	const url = new URL(`${API_BASE_URL}${endpoint}`);
 	if (params) {
