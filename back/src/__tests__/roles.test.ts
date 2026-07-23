@@ -58,7 +58,15 @@ describe("requireAdmin", () => {
     const fd = new FormData();
     fd.append("title", "タイトル");
     fd.append("body", "本文です。本文です。本文です。");
-    expect((await app.request("/api/news-post", { method: "POST", headers: { Cookie: memberCookie }, body: fd })).status).toBe(403);
+    expect(
+      (
+        await app.request("/api/news-post", {
+          method: "POST",
+          headers: { Cookie: memberCookie, Origin: "http://localhost:3000" },
+          body: fd,
+        })
+      ).status,
+    ).toBe(403);
   });
 });
 

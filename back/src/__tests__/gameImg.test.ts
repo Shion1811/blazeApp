@@ -17,10 +17,16 @@ function pngFile(name = "photo.png") {
   return new File([PNG_1X1], name, { type: "image/png" });
 }
 
+const ORIGIN = "http://localhost:3000";
+
 async function postGameImg(cookie: string) {
   const fd = new FormData();
   fd.append("image", pngFile());
-  return app.request("/api/gameImg", { method: "POST", headers: { Cookie: cookie }, body: fd });
+  return app.request("/api/gameImg", {
+    method: "POST",
+    headers: { Cookie: cookie, Origin: ORIGIN },
+    body: fd,
+  });
 }
 
 beforeEach(async () => {
@@ -39,7 +45,11 @@ describe("POST /api/gameImg", () => {
 
   it("画像なしは400", async () => {
     const cookie = await registerAndLogin("Owner", `owner2${D}`);
-    const res = await app.request("/api/gameImg", { method: "POST", headers: { Cookie: cookie }, body: new FormData() });
+    const res = await app.request("/api/gameImg", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: ORIGIN },
+      body: new FormData(),
+    });
     expect(res.status).toBe(400);
   });
 
@@ -52,14 +62,20 @@ describe("POST /api/gameImg", () => {
   it("認証なしは 401", async () => {
     const fd = new FormData();
     fd.append("image", pngFile());
-    expect((await app.request("/api/gameImg", { method: "POST", body: fd })).status).toBe(401);
+    expect(
+      (await app.request("/api/gameImg", { method: "POST", headers: { Origin: ORIGIN }, body: fd })).status,
+    ).toBe(401);
   });
 
   it("許可されていない拡張子は400", async () => {
     const cookie = await registerAndLogin("Owner", `owner4${D}`);
     const fd = new FormData();
     fd.append("image", new File([PNG_1X1], "photo.exe", { type: "application/octet-stream" }));
-    const res = await app.request("/api/gameImg", { method: "POST", headers: { Cookie: cookie }, body: fd });
+    const res = await app.request("/api/gameImg", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: ORIGIN },
+      body: fd,
+    });
     expect(res.status).toBe(400);
   });
 });
@@ -168,7 +184,7 @@ describe("PATCH /api/gameImg/:id/:imageId — 画像差し替え", () => {
     fd.append("image", pngFile("new.png"));
     const res = await app.request(`/api/gameImg/${postBody.data.id}/${imageId}`, {
       method: "PATCH",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
       body: fd,
     });
     expect(res.status).toBe(200);
@@ -183,7 +199,7 @@ describe("PATCH /api/gameImg/:id/:imageId — 画像差し替え", () => {
 
     const res = await app.request(`/api/gameImg/${postBody.data.id}/${imageId}`, {
       method: "PATCH",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
       body: new FormData(),
     });
     expect(res.status).toBe(400);

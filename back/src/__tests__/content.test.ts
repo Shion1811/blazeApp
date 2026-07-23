@@ -10,11 +10,17 @@ beforeEach(async () => {
   await cleanDb();
 });
 
+const ORIGIN = "http://localhost:3000";
+
 async function postNews(cookie: string, title: string, body: string) {
   const fd = new FormData();
   fd.append("title", title);
   fd.append("body", body);
-  return app.request("/api/news-post", { method: "POST", headers: { Cookie: cookie }, body: fd });
+  return app.request("/api/news-post", {
+    method: "POST",
+    headers: { Cookie: cookie, Origin: ORIGIN },
+    body: fd,
+  });
 }
 
 // --- admin_name ---
@@ -72,7 +78,9 @@ describe("ニュース書き込み権限", () => {
     const fd = new FormData();
     fd.append("title", "タイトル");
     fd.append("body", "本文です。");
-    expect((await app.request("/api/news-post", { method: "POST", body: fd })).status).toBe(401);
+    expect(
+      (await app.request("/api/news-post", { method: "POST", headers: { Origin: ORIGIN }, body: fd })).status,
+    ).toBe(401);
   });
 });
 
@@ -84,7 +92,9 @@ describe("問い合わせ権限", () => {
     fd.append("name", "お客様");
     fd.append("title", "お問い合わせタイトル");
     fd.append("body", "お問い合わせ本文です。");
-    expect((await app.request("/api/inquiry", { method: "POST", body: fd })).status).toBe(200);
+    expect(
+      (await app.request("/api/inquiry", { method: "POST", headers: { Origin: ORIGIN }, body: fd })).status,
+    ).toBe(200);
   });
 
   it("問い合わせ一覧は認証が必要", async () => {

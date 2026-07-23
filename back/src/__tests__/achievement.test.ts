@@ -17,10 +17,12 @@ function achievementForm(title: string, body: string) {
   return fd;
 }
 
+const ORIGIN = "http://localhost:3000";
+
 async function postAchievement(cookie: string, title: string, body: string) {
   return app.request("/api/achievement", {
     method: "POST",
-    headers: { Cookie: cookie },
+    headers: { Cookie: cookie, Origin: ORIGIN },
     body: achievementForm(title, body),
   });
 }
@@ -45,6 +47,7 @@ describe("POST /api/achievement", () => {
   it("認証なしは 401", async () => {
     const res = await app.request("/api/achievement", {
       method: "POST",
+      headers: { Origin: ORIGIN },
       body: achievementForm("タイトル", "本文です。本文です。"),
     });
     expect(res.status).toBe(401);
@@ -98,7 +101,7 @@ describe("PATCH /api/achievement/:id", () => {
     fd.append("title", "新タイトル");
     const res = await app.request(`/api/achievement/${postBody.data.id}`, {
       method: "PATCH",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
       body: fd,
     });
     expect(res.status).toBe(200);
@@ -116,7 +119,7 @@ describe("PATCH /api/achievement/:id", () => {
     fd.append("title", "新タイトル");
     const res = await app.request(`/api/achievement/${postBody.data.id}`, {
       method: "PATCH",
-      headers: { Cookie: memberCookie },
+      headers: { Cookie: memberCookie, Origin: ORIGIN },
       body: fd,
     });
     expect(res.status).toBe(403);
@@ -128,7 +131,7 @@ describe("PATCH /api/achievement/:id", () => {
     fd.append("title", "新タイトル");
     const res = await app.request("/api/achievement/00000000-0000-0000-0000-000000000000", {
       method: "PATCH",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
       body: fd,
     });
     expect(res.status).toBe(404);
