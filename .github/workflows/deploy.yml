@@ -3,6 +3,7 @@ name: Continuous Deployment
 on:
   push:
     branches: [main, dev] # main または dev にpushされたら自動デプロイ
+  workflow_dispatch: # 手動実行用（環境変数だけ更新して再デプロイしたい場合など）
 
 permissions:
   contents: read
