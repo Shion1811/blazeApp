@@ -165,7 +165,7 @@ describe("DELETE /api/media/:id", () => {
 
     const res = await app.request(`/api/media/${postBody.data.id}`, {
       method: "DELETE",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(200);
 

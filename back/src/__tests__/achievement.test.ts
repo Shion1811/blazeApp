@@ -146,7 +146,7 @@ describe("DELETE /api/achievement/:id", () => {
 
     const res = await app.request(`/api/achievement/${postBody.data.id}`, {
       method: "DELETE",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(200);
 
@@ -172,7 +172,10 @@ describe("DELETE /api/achievement/:id", () => {
     const postRes = await postAchievement(cookie, "タイトル", "本文です。本文です。");
     const postBody = await postRes.json() as { data: { id: string } };
 
-    const res = await app.request(`/api/achievement/${postBody.data.id}`, { method: "DELETE" });
+    const res = await app.request(`/api/achievement/${postBody.data.id}`, {
+      method: "DELETE",
+      headers: { Origin: ORIGIN },
+    });
     expect(res.status).toBe(401);
   });
 
@@ -180,7 +183,7 @@ describe("DELETE /api/achievement/:id", () => {
     const cookie = await registerAndLogin("Owner", `owner11${D}`);
     const res = await app.request("/api/achievement/00000000-0000-0000-0000-000000000000", {
       method: "DELETE",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(404);
   });

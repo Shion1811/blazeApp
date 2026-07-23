@@ -214,7 +214,7 @@ describe("DELETE /api/gameImg/:id", () => {
 
     const res = await app.request(`/api/gameImg/${postBody.data.id}`, {
       method: "DELETE",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(200);
 
@@ -239,7 +239,7 @@ describe("DELETE /api/gameImg/:id", () => {
     const cookie = await registerAndLogin("Owner", `owner16${D}`);
     const res = await app.request("/api/gameImg/00000000-0000-0000-0000-000000000000", {
       method: "DELETE",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(404);
   });
