@@ -1,6 +1,6 @@
 // スキーマ設計
 
-import { pgTable, uuid, varchar, timestamp, text, unique } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, text, date, unique } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 // ヘルパー
@@ -83,6 +83,32 @@ export const reply = pgTable("reply", {
   img: s3Path("img"),
   // ファイルのS3パス（任意）
   file: s3Path("file"),
+});
+
+// 体験申し込みテーブル
+export const trialApplication = pgTable("trial_application", {
+  ...baseFields,
+  email: varchar("email", { length: 255 }).notNull(),
+  // 体験日
+  trial_date: date("trial_date").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  // フリガナ
+  furigana: varchar("furigana", { length: 100 }).notNull(),
+  // 性別: 'male' | 'female' | 'other'
+  gender: varchar("gender", { length: 10 }).notNull(),
+  // 生年月日
+  birth_date: date("birth_date").notNull(),
+  school_name: varchar("school_name", { length: 100 }).notNull(),
+  // 塾（任意）
+  cram_school: varchar("cram_school", { length: 100 }),
+  // 連絡の取れる電話番号
+  phone_number: varchar("phone_number", { length: 20 }).notNull(),
+  // 体験のきっかけ: 'flyer' | 'instagram' | 'referral' | 'other'
+  motivation: varchar("motivation", { length: 20 }).notNull(),
+  // motivation が 'other' の場合の自由記述
+  motivation_other: varchar("motivation_other", { length: 200 }),
+  // motivation が 'referral' の場合の紹介者名（任意）
+  referrer_name: varchar("referrer_name", { length: 100 }),
 });
 
 // 実績テーブル
@@ -216,6 +242,13 @@ export const VALIDATION_LIMITS = {
   body: { min: 1, max: 2000 },
   category: { min: 1, max: 30 },
   inquiryName: { min: 1, max: 16 },
+  trialName: { min: 1, max: 50 },
+  furigana: { min: 1, max: 100 },
+  schoolName: { min: 1, max: 100 },
+  cramSchool: { max: 100 },
+  phoneNumber: { min: 1, max: 20 },
+  motivationOther: { min: 1, max: 200 },
+  referrerName: { max: 100 },
 } as const;
 
 export const emailSchema = z
@@ -260,3 +293,53 @@ export const inquiryNameSchema = stringField(
 );
 
 export const consentStatusSchema = z.enum(["pending", "approved", "rejected"]);
+
+// 体験申し込み用バリデーション
+
+const optionalStringField = (max: number, label: string) =>
+  z
+    .string()
+    .trim()
+    .max(max, `${label}は${max}文字以内で入力してください。`)
+    .optional()
+    .transform((v) => (v === "" ? undefined : v));
+
+const dateOnlySchema = (label: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, `${label}はYYYY-MM-DD形式で入力してください。`)
+    .refine((v) => !Number.isNaN(Date.parse(v)), `${label}の日付が正しくありません。`);
+
+export const trialNameSchema = stringField(
+  VALIDATION_LIMITS.trialName.min,
+  VALIDATION_LIMITS.trialName.max,
+  "名前",
+);
+export const furiganaSchema = stringField(
+  VALIDATION_LIMITS.furigana.min,
+  VALIDATION_LIMITS.furigana.max,
+  "フリガナ",
+).regex(/^[ァ-ヶー\s]+$/, "フリガナは全角カタカナで入力してください。");
+export const schoolNameSchema = stringField(
+  VALIDATION_LIMITS.schoolName.min,
+  VALIDATION_LIMITS.schoolName.max,
+  "学校名",
+);
+export const cramSchoolSchema = optionalStringField(VALIDATION_LIMITS.cramSchool.max, "塾");
+export const phoneNumberSchema = stringField(
+  VALIDATION_LIMITS.phoneNumber.min,
+  VALIDATION_LIMITS.phoneNumber.max,
+  "電話番号",
+).regex(/^0[0-9]{1,4}-?[0-9]{1,4}-?[0-9]{3,4}$/, "電話番号の形式が正しくありません。");
+export const motivationOtherSchema = optionalStringField(
+  VALIDATION_LIMITS.motivationOther.max,
+  "体験のきっかけ（その他）",
+);
+export const referrerNameSchema = optionalStringField(VALIDATION_LIMITS.referrerName.max, "紹介者名");
+
+export const genderSchema = z.enum(["male", "female", "other"]);
+export const motivationSchema = z.enum(["flyer", "instagram", "referral", "other"]);
+
+export const trialDateSchema = dateOnlySchema("体験日");
+export const birthDateSchema = dateOnlySchema("生年月日");

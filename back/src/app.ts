@@ -23,6 +23,7 @@ import resetPasswordApp from "./admin/resetPassword.js";
 // コンテンツ
 import newsApp from "./news/index.js";
 import inquiryApp from "./inquiry/index.js";
+import trialApp from "./trial/index.js";
 import achievementApp from "./achievement/index.js";
 import gameImgApp from "./gameImg/index.js";
 import mediaApp from "./media/index.js";
@@ -72,6 +73,7 @@ app.route("/", forgotPasswordApp);
 app.route("/", resetPasswordApp);
 app.route("/", newsApp);
 app.route("/", inquiryApp);
+app.route("/", trialApp);
 app.route("/", achievementApp);
 app.route("/", gameImgApp);
 app.route("/", mediaApp);

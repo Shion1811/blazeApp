@@ -20,6 +20,7 @@ export {
   deletionRequests,
   deletionApprovals,
   passwordResetTokens,
+  trialApplication,
 } from "../db/schema.js";
 
 // バリデーションスキーマ
@@ -33,6 +34,17 @@ export {
   inquiryNameSchema,
   consentStatusSchema,
   categorySchema,
+  trialNameSchema,
+  furiganaSchema,
+  schoolNameSchema,
+  cramSchoolSchema,
+  phoneNumberSchema,
+  motivationOtherSchema,
+  referrerNameSchema,
+  genderSchema,
+  motivationSchema,
+  trialDateSchema,
+  birthDateSchema,
 } from "../db/schema.js";
 
 // 認証ミドルウェア
@@ -80,4 +92,8 @@ export { createCrudRouter } from "../utils/crudRouter.js";
 export { parsePage, buildPagination } from "../utils/pagination.js";
 
 // メール送信
-export { sendPasswordResetEmail } from "../utils/mail.js";
+export {
+  sendPasswordResetEmail,
+  sendTrialApplicationConfirmationEmail,
+  sendTrialApplicationAdminNotification,
+} from "../utils/mail.js";
