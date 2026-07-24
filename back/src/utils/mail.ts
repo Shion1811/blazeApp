@@ -62,6 +62,16 @@ export interface TrialApplicationMailData {
   referrerName?: string;
 }
 
+// メールHTMLに埋め込む前にユーザー入力をエスケープする（HTML/メールインジェクション対策）
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const GENDER_LABELS: Record<TrialApplicationMailData["gender"], string> = {
   male: "男性",
   female: "女性",
@@ -77,10 +87,10 @@ const MOTIVATION_LABELS: Record<TrialApplicationMailData["motivation"], string> 
 
 function formatMotivation(data: TrialApplicationMailData): string {
   if (data.motivation === "other" && data.motivationOther) {
-    return `${MOTIVATION_LABELS.other}（${data.motivationOther}）`;
+    return `${MOTIVATION_LABELS.other}（${escapeHtml(data.motivationOther)}）`;
   }
   if (data.motivation === "referral" && data.referrerName) {
-    return `${MOTIVATION_LABELS.referral}（紹介者: ${data.referrerName}）`;
+    return `${MOTIVATION_LABELS.referral}（紹介者: ${escapeHtml(data.referrerName)}）`;
   }
   return MOTIVATION_LABELS[data.motivation];
 }
@@ -99,9 +109,9 @@ export async function sendTrialApplicationConfirmationEmail(
     to: data.email,
     subject: "【西尾ブレイズ】体験申し込みを受け付けました",
     html: `
-      <p>${data.name} 様</p>
+      <p>${escapeHtml(data.name)} 様</p>
       <p>体験申し込みを受け付けました。担当者よりご連絡いたしますので、しばらくお待ちください。</p>
-      <p>体験日: ${data.trialDate}</p>
+      <p>体験日: ${escapeHtml(data.trialDate)}</p>
       <p>このメールに心当たりがない場合は、本メールを無視してください。</p>
     `,
   });
@@ -113,7 +123,7 @@ export async function sendTrialApplicationConfirmationEmail(
 
 // 体験申し込みの通知先（カンマ区切りで複数指定可）
 const TRIAL_NOTIFICATION_EMAILS = process.env.TRIAL_NOTIFICATION_EMAIL
-  ? process.env.TRIAL_NOTIFICATION_EMAIL.split(",")
+  ? process.env.TRIAL_NOTIFICATION_EMAIL.split(",").map((e) => e.trim()).filter(Boolean)
   : [];
 
 /**
@@ -136,14 +146,14 @@ export async function sendTrialApplicationAdminNotification(
     html: `
       <p>新しい体験申し込みがありました。</p>
       <ul>
-        <li>体験日: ${data.trialDate}</li>
-        <li>名前: ${data.name}（${data.furigana}）</li>
+        <li>体験日: ${escapeHtml(data.trialDate)}</li>
+        <li>名前: ${escapeHtml(data.name)}（${escapeHtml(data.furigana)}）</li>
         <li>性別: ${GENDER_LABELS[data.gender]}</li>
-        <li>生年月日: ${data.birthDate}</li>
-        <li>学校名: ${data.schoolName}</li>
-        <li>塾: ${data.cramSchool ?? "なし"}</li>
-        <li>メールアドレス: ${data.email}</li>
-        <li>電話番号: ${data.phoneNumber}</li>
+        <li>生年月日: ${escapeHtml(data.birthDate)}</li>
+        <li>学校名: ${escapeHtml(data.schoolName)}</li>
+        <li>塾: ${data.cramSchool ? escapeHtml(data.cramSchool) : "なし"}</li>
+        <li>メールアドレス: ${escapeHtml(data.email)}</li>
+        <li>電話番号: ${escapeHtml(data.phoneNumber)}</li>
         <li>きっかけ: ${formatMotivation(data)}</li>
       </ul>
     `,

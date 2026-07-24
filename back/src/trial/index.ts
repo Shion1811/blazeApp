@@ -1,6 +1,5 @@
 // 体験申し込みAPI（3エンドポイント）
 
-import { randomUUID } from "node:crypto";
 import { Hono, getConnInfo, rateLimiter, RedisStore } from "../index.js";
 import { admin, authToken, redisClient } from "../shared/index.js";
 import { requireAdmin } from "../db/roleGuard.js";
@@ -23,7 +22,7 @@ const trialLimiter =
         limit: 1,
         message: "1分間に1回しか送信できません。",
         keyGenerator: (c) => {
-          try { return getConnInfo(c).remote.address ?? randomUUID(); } catch { return randomUUID(); }
+          try { return getConnInfo(c).remote.address ?? "unknown"; } catch { return "unknown"; }
         },
         store: new RedisStore({
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),

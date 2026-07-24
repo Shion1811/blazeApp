@@ -18,6 +18,11 @@ jobs:
   deploy-frontend:
     needs: ci
     runs-on: ubuntu-latest
+    # 同一refでの多重実行時、dev用エイリアスの付け替えが実行順の入れ替わりで
+    # 古いデプロイに戻ってしまわないよう直列化する
+    concurrency:
+      group: deploy-frontend-${{ github.ref_name }}
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: front
@@ -49,7 +54,9 @@ jobs:
       # 本番ドメインが自動で使われるため不要）
       - name: Alias dev deployment to a stable domain
         if: github.ref_name != 'main'
-        run: vercel alias set ${{ steps.deploy.outputs.url }} nisio-blaze-dev.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: vercel alias set "$DEPLOY_URL" nisio-blaze-dev.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
 
   # 3. バックエンド（Hono）を ECS Fargate にデプロイ（infra/lib/backend-stack.ts 参照）
   #    デプロイ前に Secrets Manager に `blazeapp/backend-prod` / `blazeapp/backend-dev` シークレットを作成しておくこと
