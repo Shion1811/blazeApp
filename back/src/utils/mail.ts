@@ -55,11 +55,11 @@ export interface TrialApplicationMailData {
   gender: "male" | "female" | "other";
   birthDate: string;
   schoolName: string;
-  cramSchool?: string;
+  cramSchool?: string | undefined;
   phoneNumber: string;
   motivation: "flyer" | "instagram" | "referral" | "other";
-  motivationOther?: string;
-  referrerName?: string;
+  motivationOther?: string | undefined;
+  referrerName?: string | undefined;
 }
 
 // メールHTMLに埋め込む前にユーザー入力をエスケープする（HTML/メールインジェクション対策）
