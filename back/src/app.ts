@@ -2,6 +2,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { csrf } from "hono/csrf";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { sql } from "drizzle-orm";
@@ -22,6 +23,7 @@ import resetPasswordApp from "./admin/resetPassword.js";
 // コンテンツ
 import newsApp from "./news/index.js";
 import inquiryApp from "./inquiry/index.js";
+import trialApp from "./trial/index.js";
 import achievementApp from "./achievement/index.js";
 import gameImgApp from "./gameImg/index.js";
 import mediaApp from "./media/index.js";
@@ -39,18 +41,24 @@ if (process.env.NODE_ENV !== "test") {
 // セキュリティヘッダー
 app.use("*", secureHeaders());
 
+// フロントのオリジン許可リスト（CORS・CSRF検証で共有）
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["http://localhost:3000"];
+
 // CORS
 app.use(
   "*",
   cors({
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",")
-      : ["http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// CSRF対策（Cookie認証はSameSite=Strictのみに頼らず、Origin/Sec-Fetch-Siteヘッダーもサーバー側で検証する）
+app.use("*", csrf({ origin: allowedOrigins }));
 
 // ルーティング
 app.route("/", registerApp);
@@ -65,6 +73,7 @@ app.route("/", forgotPasswordApp);
 app.route("/", resetPasswordApp);
 app.route("/", newsApp);
 app.route("/", inquiryApp);
+app.route("/", trialApp);
 app.route("/", achievementApp);
 app.route("/", gameImgApp);
 app.route("/", mediaApp);

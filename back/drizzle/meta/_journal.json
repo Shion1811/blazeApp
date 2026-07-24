@@ -71,6 +71,13 @@
       "when": 1784850000000,
       "tag": "0009_add_news_category",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784850001000,
+      "tag": "0010_add_trial_application",
+      "breakpoints": true
     }
   ]
 }

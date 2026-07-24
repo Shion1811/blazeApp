@@ -5,6 +5,7 @@ import { cleanDb } from "./setup.js";
 import { registerAndLogin, getUsers } from "./testHelpers.js";
 
 const D = "@roles.test";
+const ORIGIN = "http://localhost:3000";
 
 beforeEach(async () => {
   await cleanDb();
@@ -58,7 +59,15 @@ describe("requireAdmin", () => {
     const fd = new FormData();
     fd.append("title", "タイトル");
     fd.append("body", "本文です。本文です。本文です。");
-    expect((await app.request("/api/news-post", { method: "POST", headers: { Cookie: memberCookie }, body: fd })).status).toBe(403);
+    expect(
+      (
+        await app.request("/api/news-post", {
+          method: "POST",
+          headers: { Cookie: memberCookie, Origin: "http://localhost:3000" },
+          body: fd,
+        })
+      ).status,
+    ).toBe(403);
   });
 });
 
@@ -136,7 +145,7 @@ describe("owner による他者アカウント削除", () => {
 
     const res = await app.request(`/api/admin/users/${targetId}/delete-request`, {
       method: "POST",
-      headers: { Cookie: ownerCookie },
+      headers: { Cookie: ownerCookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(200);
     expect((await res.json() as { message: string }).message).toContain("削除しました");
@@ -150,7 +159,7 @@ describe("owner による他者アカウント削除", () => {
 
     const res = await app.request(`/api/admin/users/${ownerId}/delete-request`, {
       method: "POST",
-      headers: { Cookie: ownerCookie },
+      headers: { Cookie: ownerCookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(400);
   });
@@ -177,7 +186,7 @@ describe("owner による他者アカウント削除", () => {
     // owner2(member)の承認も必要 → 承認待ち
     const reqRes = await app.request(`/api/admin/users/${targetId}/delete-request`, {
       method: "POST",
-      headers: { Cookie: owner1Cookie },
+      headers: { Cookie: owner1Cookie, Origin: ORIGIN },
     });
     expect(reqRes.status).toBe(200);
     expect((await reqRes.json() as { message: string }).message).toContain("承認");

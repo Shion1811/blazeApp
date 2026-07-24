@@ -17,10 +17,12 @@ function mediaForm(title: string, body: string) {
   return fd;
 }
 
+const ORIGIN = "http://localhost:3000";
+
 async function postMedia(cookie: string, title: string, body: string) {
   return app.request("/api/media", {
     method: "POST",
-    headers: { Cookie: cookie },
+    headers: { Cookie: cookie, Origin: ORIGIN },
     body: mediaForm(title, body),
   });
 }
@@ -42,7 +44,11 @@ describe("POST /api/media", () => {
   });
 
   it("認証なしは 401", async () => {
-    const res = await app.request("/api/media", { method: "POST", body: mediaForm("タイトル", "本文です。本文です。") });
+    const res = await app.request("/api/media", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body: mediaForm("タイトル", "本文です。本文です。"),
+    });
     expect(res.status).toBe(401);
   });
 });
@@ -64,7 +70,11 @@ describe("GET /api/media", () => {
     const newsFd = new FormData();
     newsFd.append("title", "ニュースタイトル");
     newsFd.append("body", "ニュース本文です。ニュース本文です。");
-    await app.request("/api/news-post", { method: "POST", headers: { Cookie: cookie }, body: newsFd });
+    await app.request("/api/news-post", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: ORIGIN },
+      body: newsFd,
+    });
 
     await postMedia(cookie, "メディアタイトル", "メディア本文です。メディア本文です。");
 
@@ -95,7 +105,11 @@ describe("GET /api/media/:id", () => {
     const newsFd = new FormData();
     newsFd.append("title", "ニュースタイトル");
     newsFd.append("body", "ニュース本文です。ニュース本文です。");
-    const newsRes = await app.request("/api/news-post", { method: "POST", headers: { Cookie: cookie }, body: newsFd });
+    const newsRes = await app.request("/api/news-post", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: ORIGIN },
+      body: newsFd,
+    });
     const newsBody = await newsRes.json() as { data: { id: string } };
 
     const res = await app.request(`/api/media/${newsBody.data.id}`);
@@ -118,7 +132,7 @@ describe("PATCH /api/media/:id", () => {
     fd.append("title", "新タイトル");
     const res = await app.request(`/api/media/${postBody.data.id}`, {
       method: "PATCH",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
       body: fd,
     });
     expect(res.status).toBe(200);
@@ -136,7 +150,7 @@ describe("PATCH /api/media/:id", () => {
     fd.append("title", "新タイトル");
     const res = await app.request(`/api/media/${postBody.data.id}`, {
       method: "PATCH",
-      headers: { Cookie: memberCookie },
+      headers: { Cookie: memberCookie, Origin: ORIGIN },
       body: fd,
     });
     expect(res.status).toBe(403);
@@ -151,7 +165,7 @@ describe("DELETE /api/media/:id", () => {
 
     const res = await app.request(`/api/media/${postBody.data.id}`, {
       method: "DELETE",
-      headers: { Cookie: cookie },
+      headers: { Cookie: cookie, Origin: ORIGIN },
     });
     expect(res.status).toBe(200);
 
