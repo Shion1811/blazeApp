@@ -25,6 +25,7 @@ const s3Path = (name: string) => varchar(name, { length: 500 });
 // 管理者テーブル
 export const admin = pgTable("users", {
   ...baseFields,
+  // uniqueは同じトークンは存在できないようにする
   // lengthは100文字以内 notNullで空文字は不可
   name: varchar("name", { length: 100 }).notNull(),
   // uniqueは重複を不可
