@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { hashToken } from "../db/token.js";
 import {
   Hono,
   z,
@@ -116,17 +117,18 @@ app.post("/api/admin/account-recover", recoverLimiter, async (c) => {
   }
 
   // 復活：deleted_at をクリアして新しいトークンを発行
-  const token = randomBytes(32).toString("hex");
+  const rawToken = randomBytes(32).toString("hex");
+  const hashedToken = hashToken(rawToken);
   const tokenIssuedAt = new Date();
 
   await db
     .update(admin)
-    .set({ deleted_at: null, token, token_issued_at: tokenIssuedAt })
+    .set({ deleted_at: null, token: hashedToken, token_issued_at: tokenIssuedAt })
     .where(eq(admin.id, user.id));
 
   c.header(
     "Set-Cookie",
-    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
   );
 
   return c.json(

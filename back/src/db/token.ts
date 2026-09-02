@@ -5,18 +5,23 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "./index.js";
 import { admin } from "./schema.js";
 import type { Context, Next } from "hono";
+import { createHash } from "node:crypto";
 
 type TokenLookupResult =
   | { status: "ok"; user: typeof admin.$inferSelect }
   | { status: "not_found" }
   | { status: "expired" };
 
+export const hashToken = (token: string): string => 
+  createHash("sha256").update(token).digest("hex");
+
 // トークンで有効な（削除済みでない）ユーザーを検索し、期限切れかどうかも判定する
 async function resolveUserFromToken(token: string): Promise<TokenLookupResult> {
+  const hashedToken = hashToken(token);
   const existingUsers = await db
     .select()
     .from(admin)
-    .where(and(eq(admin.token, token), isNull(admin.deleted_at)));
+    .where(and(eq(admin.token, hashedToken), isNull(admin.deleted_at)));
 
   const user = existingUsers[0];
   if (!user) return { status: "not_found" };

@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { hashToken } from "../db/token.js";
 import {
   Hono,
   z,
@@ -121,24 +122,24 @@ app.post("/api/admin/login", loginLimiter, async (c) => {
   }
 
   // トークンを生成してDBに保存
-  const token = randomBytes(32).toString("hex");
+  const rawToken = randomBytes(32).toString("hex");
+  const hashedToken = hashToken(rawToken);
   const tokenIssuedAt = new Date();
 
   await db
     .update(admin)
-    .set({ token, token_issued_at: tokenIssuedAt })
+    .set({ token: hashedToken, token_issued_at: tokenIssuedAt })
     .where(eq(admin.id, user.id));
 
   c.header(
     "Set-Cookie",
-    // token=${token}はCookieの名前と値
+    // token=${rawToken}はCookieの名前と値
     //  HttpOnlyはXSS攻撃対策
     //  Secureはhttpsのみ送信可能httpは不可
     // SameSite=StrictはCSRF攻撃対策
     // Path=/はサイト全体でCookieの使用が可能
     // Max-Age=2592000は1ヶ月
-    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
-  );
+    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`);
   // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
     {

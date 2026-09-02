@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { isNull, sql } from "drizzle-orm";
+import { hashToken } from "../db/token.js";
 import {
   Hono,
   z,
@@ -36,7 +37,6 @@ const registerLimiter =
           sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         }) as any,
       });
-
 // パスワードのハッシュ化
 export const hashPassword = async (password: string): Promise<string> => {
   const saltRounds = 10;
@@ -133,17 +133,18 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
     .where(isNull(admin.deleted_at));
   const role = Number(countResult[0]?.total ?? 0) === 0 ? "owner" : "member";
 
-  // トークンを生成
-  const token = randomBytes(32).toString("hex");
+  // トークンを生成（生値はCookie、ハッシュをDBに保存）
+  const rawToken = randomBytes(32).toString("hex");
+  const hashedToken = hashToken(rawToken);
   const token_issued_at = new Date();
 
   try {
     // DBにユーザーデータを保存
     await db.insert(admin).values({
+      token: hashedToken,
       name,
       email,
       password: hashedPassword,
-      token,
       token_issued_at,
       role,
     });
@@ -163,7 +164,7 @@ app.post("/api/admin/register", registerLimiter, async (c) => {
 
   c.header(
     "Set-Cookie",
-    `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+    `token=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
   );
   // 成功（tokenはHttpOnly Cookieで送信済み。レスポンスボディには含めない）
   return c.json(
