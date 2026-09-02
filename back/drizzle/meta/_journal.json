@@ -78,6 +78,13 @@
       "when": 1784850001000,
       "tag": "0010_add_trial_application",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784850002000,
+      "tag": "0011_hash_legacy_tokens",
+      "breakpoints": true
     }
   ]
 }
