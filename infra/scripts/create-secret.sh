@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
 # infra/lib/backend-stack.ts が参照する Secrets Manager シークレット
-# `blazeapp/backend` を作成する。既に存在する場合は値を更新する。
+# `blazeapp/backend-{stage}`（例: blazeapp/backend-prod, blazeapp/backend-dev）を
+# 作成する。既に存在する場合は値を更新する。
+#
+# CDK は stage ごとに別スタック・別シークレットを参照する（infra/bin/infra.ts 参照）ため、
+# prod と dev でそれぞれこのスクリプトを実行して両方のシークレットを用意すること。
+# STAGE でどちらを作るか指定する（未指定なら dev。誤って本番へ作らないための既定値）。
 #
 # 実行前に、下の環境変数に実際の値を設定してから実行すること。
 #   DATABASE_URL / REDIS_URL / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
 #   AWS_S3_BUCKET / RESEND_API_KEY
 #
-# 実行例:
+# 実行例（dev 用シークレット blazeapp/backend-dev を作成/更新）:
+#   STAGE=dev \
 #   DATABASE_URL=postgres://... REDIS_URL=redis://... \
 #   AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... \
 #   AWS_S3_BUCKET=... RESEND_API_KEY=... \
 #   ./create-secret.sh
+#
+# prod 用は STAGE=prod を指定する。
+# シークレット名を直接上書きしたい場合は SECRET_NAME=... を渡す（STAGE より優先）。
 
 set -euo pipefail
 
-SECRET_NAME="${SECRET_NAME:-blazeapp/backend}"
+STAGE="${STAGE:-dev}"
+SECRET_NAME="${SECRET_NAME:-blazeapp/backend-${STAGE}}"
 
 for key in DATABASE_URL REDIS_URL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_S3_BUCKET RESEND_API_KEY; do
   if [ -z "${!key:-}" ]; then
